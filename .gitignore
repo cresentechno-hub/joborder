@@ -1,0 +1,12 @@
+# Uploaded quotation/PO files are runtime data, not source — keep the folders (via .htaccess) but not their contents
+/public/uploads/quotations/*
+!/public/uploads/quotations/.htaccess
+/public/uploads/po/*
+!/public/uploads/po/.htaccess
+
+# Application logs
+/storage/logs/*.log
+
+# OS/editor cruft
+Thumbs.db
+.DS_Store
