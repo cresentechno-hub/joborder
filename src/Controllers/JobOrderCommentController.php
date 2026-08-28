@@ -134,6 +134,172 @@ final class JobOrderCommentController extends Controller
         $this->redirect("/job-orders/{$jobOrderId}/edit#comments");
     }
 
+    public function edit(array $params): void
+    {
+        [$jobOrder, $comment] = $this->loadOwned($params);
+
+        $this->view('job_orders/comment_edit', [
+            'jobOrder'   => $jobOrder,
+            'comment'    => $comment,
+            'stages'     => JobStage::allActive(),
+            'users'      => User::allActive(),
+            'selectedCc' => JobOrderComment::getCcUserIds((int) $comment['id']),
+        ]);
+    }
+
+    public function update(array $params): void
+    {
+        $jobOrderId = (int) $params['id'];
+        $commentId = (int) $params['commentId'];
+
+        if (!verify_csrf()) {
+            flash('comment_error', 'Your session expired, please try again.');
+            $this->redirect("/job-orders/{$jobOrderId}/comments/{$commentId}/edit");
+        }
+
+        [$jobOrder, $comment] = $this->loadOwned($params);
+
+        $input = $_POST;
+        $hasInvoiceFile = !empty($_FILES['comment_invoice_file']['name']);
+        $hasDoFile = !empty($_FILES['comment_do_file']['name']);
+
+        $invoiceNo = trim((string) ($input['comment_invoice_no'] ?? ''));
+        if ($invoiceNo === '' && $hasInvoiceFile) {
+            $invoiceNo = pathinfo($_FILES['comment_invoice_file']['name'], PATHINFO_FILENAME);
+        }
+        // Keep the comment's existing invoice_no if the field was left blank
+        // and no new invoice file was uploaded (e.g. only editing the remark).
+        if ($invoiceNo === '') {
+            $invoiceNo = (string) ($comment['invoice_no'] ?? '');
+        }
+
+        $errors = $this->validate($input, $hasDoFile, $invoiceNo);
+        if (!empty($errors)) {
+            flash_input($input);
+            flash('comment_error', implode(' ', $errors));
+            $this->redirect("/job-orders/{$jobOrderId}/comments/{$commentId}/edit");
+        }
+
+        if ($hasInvoiceFile) {
+            try {
+                $up = FileUploadService::upload(
+                    $_FILES['comment_invoice_file'],
+                    UPLOAD_INVOICE_DIR . '/' . $jobOrderId,
+                    'INV-' . $invoiceNo
+                );
+                JobOrderComment::updateInvoiceFile(
+                    $commentId,
+                    UPLOAD_INVOICE_REL . '/' . $jobOrderId . '/' . $up['stored_name'],
+                    $up['original_name']
+                );
+            } catch (Throwable $e) {
+                flash_input($input);
+                flash('comment_error', 'Invoice upload failed: ' . $e->getMessage());
+                $this->redirect("/job-orders/{$jobOrderId}/comments/{$commentId}/edit");
+            }
+        }
+
+        if ($hasDoFile) {
+            try {
+                $up = FileUploadService::upload(
+                    $_FILES['comment_do_file'],
+                    UPLOAD_DO_DIR . '/' . $jobOrderId,
+                    'DO-' . $invoiceNo
+                );
+                JobOrderComment::updateDoFile(
+                    $commentId,
+                    UPLOAD_DO_REL . '/' . $jobOrderId . '/' . $up['stored_name'],
+                    $up['original_name']
+                );
+            } catch (Throwable $e) {
+                flash_input($input);
+                flash('comment_error', 'DO document upload failed: ' . $e->getMessage());
+                $this->redirect("/job-orders/{$jobOrderId}/comments/{$commentId}/edit");
+            }
+        }
+
+        JobOrderComment::update($commentId, [
+            'stage_id'    => (int) $input['comment_stage_id'],
+            'invoice_no'  => $invoiceNo !== '' ? $invoiceNo : null,
+            'assigned_to' => (int) $input['comment_assigned_to'],
+            'remark'      => trim((string) ($input['comment_remark'] ?? '')) ?: null,
+        ]);
+
+        $ccUserIds = array_filter(array_map('intval', (array) ($input['comment_cc_users'] ?? [])));
+        JobOrderComment::replaceCcUsers($commentId, $ccUserIds);
+
+        // Same rule as create: whatever Stage/Assign To this form holds
+        // becomes the job order's current stage/assignee.
+        JobOrder::update($jobOrderId, [
+            'quotation_no'   => $jobOrder['quotation_no'],
+            'customer_name'  => $jobOrder['customer_name'],
+            'subject'        => $jobOrder['subject'],
+            'total_cost'     => $jobOrder['total_cost'],
+            'job_start_date' => $jobOrder['job_start_date'],
+            'assigned_to'    => (int) $input['comment_assigned_to'],
+            'stage_id'       => (int) $input['comment_stage_id'],
+            'remarks'        => $jobOrder['remarks'],
+            'updated_by'     => Auth::id(),
+        ]);
+
+        ActivityLog::record(Auth::id(), 'job_order.comment_update', 'job_order_comment', $commentId);
+        flash('success', 'Comment updated.');
+        $this->redirect("/job-orders/{$jobOrderId}/edit#comments");
+    }
+
+    public function destroy(array $params): void
+    {
+        $jobOrderId = (int) $params['id'];
+        $commentId = (int) $params['commentId'];
+
+        if (!verify_csrf()) {
+            flash('comment_error', 'Your session expired, please try again.');
+            $this->redirect("/job-orders/{$jobOrderId}/edit#comments");
+        }
+
+        [, $comment] = $this->loadOwned($params);
+
+        foreach (['invoice_file_path', 'do_file_path'] as $pathKey) {
+            if (!empty($comment[$pathKey])) {
+                $absolute = ROOT_PATH . '/public/' . $comment[$pathKey];
+                if (is_file($absolute)) {
+                    @unlink($absolute);
+                }
+            }
+        }
+
+        JobOrderComment::delete($commentId);
+        ActivityLog::record(Auth::id(), 'job_order.comment_delete', 'job_order_comment', $commentId);
+        flash('success', 'Comment deleted.');
+        $this->redirect("/job-orders/{$jobOrderId}/edit#comments");
+    }
+
+    /**
+     * Loads the job order + comment for {id}/{commentId}, enforcing the
+     * same team/stage access as the job order itself, and confirming the
+     * comment actually belongs to that job order (not just any valid ID).
+     * @return array{0: array, 1: array}
+     */
+    private function loadOwned(array $params): array
+    {
+        $jobOrderId = (int) $params['id'];
+        $commentId = (int) $params['commentId'];
+
+        $jobOrder = JobOrder::findById($jobOrderId);
+        if (!$jobOrder) {
+            $this->notFound();
+        }
+        $this->assertTeamAccess($jobOrder);
+        $this->assertStageAccess($jobOrder);
+
+        $comment = JobOrderComment::findById($commentId);
+        if (!$comment || (int) $comment['job_order_id'] !== $jobOrderId) {
+            $this->notFound();
+        }
+
+        return [$jobOrder, $comment];
+    }
+
     private function validate(array $input, bool $hasDoFile, string $invoiceNo): array
     {
         $errors = [];

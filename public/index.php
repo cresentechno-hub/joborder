@@ -55,6 +55,15 @@ $router->post('/job-orders/{id}/delete', [JobOrderController::class, 'destroy'],
 $router->post('/job-orders/{id}/comments', [JobOrderCommentController::class, 'store'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
 ]);
+$router->get('/job-orders/{id}/comments/{commentId}/edit', [JobOrderCommentController::class, 'edit'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
+]);
+$router->post('/job-orders/{id}/comments/{commentId}', [JobOrderCommentController::class, 'update'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
+]);
+$router->post('/job-orders/{id}/comments/{commentId}/delete', [JobOrderCommentController::class, 'destroy'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
+]);
 
 // Users
 $router->get('/users', [UserController::class, 'index'], [

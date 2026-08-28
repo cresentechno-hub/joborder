@@ -116,8 +116,16 @@ $forceOpen = $commentError !== null;
               </span>
               <span style="margin-left:8px; font-size:13px; color: var(--color-slate);">Assigned to <?= e($c['assigned_to_name']) ?></span>
             </div>
-            <div style="font-size:12px; color: var(--color-text-muted);">
+            <div style="font-size:12px; color: var(--color-text-muted); white-space:nowrap;">
               <?= e($c['created_at']) ?> by <?= e($c['created_by_name']) ?>
+              &nbsp;|&nbsp;
+              <a href="/job-orders/<?= (int) $jobOrder['id'] ?>/comments/<?= (int) $c['id'] ?>/edit">Edit</a>
+              &nbsp;|&nbsp;
+              <form method="POST" action="/job-orders/<?= (int) $jobOrder['id'] ?>/comments/<?= (int) $c['id'] ?>/delete" style="display:inline;"
+                    onsubmit="return confirm('Delete this comment? This cannot be undone.');">
+                <?= csrf_field() ?>
+                <button type="submit" style="background:none; border:none; padding:0; color: var(--color-danger); cursor:pointer; font-size:12px;">Delete</button>
+              </form>
             </div>
           </div>
 
