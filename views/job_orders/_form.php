@@ -26,12 +26,18 @@ $isEdit = $mode === 'edit';
   <div class="form-row">
     <div class="form-group">
       <label class="form-label">Quotation File <?= $isEdit ? '' : '<span style="color:var(--color-danger)">*</span>' ?></label>
-      <input class="form-control" type="file" name="quotation_file" accept="<?= e(upload_accept_attr()) ?>">
+      <input class="form-control" type="file" id="quotation_file" name="quotation_file" accept="<?= e(upload_accept_attr()) ?>">
       <?php if ($isEdit && !empty($jobOrder['quotation_file_path'])): ?>
         <div style="margin-top:6px; font-size:12px;">
           Current: <a href="/<?= e($jobOrder['quotation_file_path']) ?>" target="_blank" rel="noopener"><?= e($jobOrder['quotation_file_original_name'] ?? 'view file') ?></a>
           <span style="color:var(--color-text-muted);">(upload a new file to replace)</span>
         </div>
+      <?php endif; ?>
+      <?php if (!$isEdit): ?>
+        <button type="button" id="read-quotation-btn" class="btn btn-outline" style="margin-top:8px; padding:6px 12px; font-size:13px;" disabled>
+          Read Quotation &amp; Auto-Fill
+        </button>
+        <div id="read-quotation-status" style="margin-top:6px; font-size:12px;"></div>
       <?php endif; ?>
     </div>
 
@@ -120,3 +126,94 @@ $isEdit = $mode === 'edit';
     <a href="/job-orders" class="btn btn-outline">Cancel</a>
   </div>
 </form>
+
+<?php if (!$isEdit): ?>
+<script>
+(function () {
+  var fileInput = document.getElementById('quotation_file');
+  var readBtn = document.getElementById('read-quotation-btn');
+  var status = document.getElementById('read-quotation-status');
+  var csrfToken = document.querySelector('input[name="_csrf"]').value;
+
+  fileInput.addEventListener('change', function () {
+    readBtn.disabled = !fileInput.files.length;
+    status.textContent = '';
+  });
+
+  readBtn.addEventListener('click', function () {
+    if (!fileInput.files.length) {
+      return;
+    }
+
+    readBtn.disabled = true;
+    readBtn.textContent = 'Reading...';
+    status.textContent = '';
+
+    var formData = new FormData();
+    formData.append('_csrf', csrfToken);
+    formData.append('quotation_file', fileInput.files[0]);
+
+    fetch('/job-orders/extract-quotation', { method: 'POST', body: formData, credentials: 'same-origin' })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        var data = result.data;
+
+        if (!result.ok || data.error) {
+          status.style.color = 'var(--color-danger)';
+          status.textContent = data.error || 'Could not read the file. Please fill in the fields manually.';
+          return;
+        }
+
+        var filled = [];
+        var missed = [];
+
+        if (data.quotation_no) {
+          document.getElementById('quotation_no').value = data.quotation_no;
+          filled.push('Quotation No');
+        } else {
+          missed.push('Quotation No');
+        }
+
+        if (data.customer_name) {
+          document.getElementById('customer_name').value = data.customer_name;
+          filled.push('Customer Name');
+        } else {
+          missed.push('Customer Name');
+        }
+
+        if (data.total_cost) {
+          document.getElementById('total_cost').value = data.total_cost;
+          filled.push('Total Cost');
+        } else {
+          missed.push('Total Cost');
+        }
+
+        // Job Start Date is always today's date, not read from the document.
+        var today = new Date();
+        var iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        document.getElementById('job_start_date').value = iso;
+        filled.push('Job Start Date');
+
+        if (data.note) {
+          status.style.color = 'var(--color-text-muted)';
+          status.textContent = data.note;
+        } else if (missed.length) {
+          status.style.color = 'var(--color-amber, #D97706)';
+          status.textContent = 'Filled: ' + filled.join(', ') + '. Please check/enter manually: ' + missed.join(', ') + '.';
+        } else {
+          status.style.color = 'var(--color-success)';
+          status.textContent = 'Auto-filled from the quotation - please double-check before submitting.';
+        }
+      })
+      .catch(function () {
+        status.style.color = 'var(--color-danger)';
+        status.textContent = 'Could not reach the server. Please fill in the fields manually.';
+      })
+      .finally(function () {
+        readBtn.disabled = false;
+        readBtn.textContent = 'Read Quotation & Auto-Fill';
+      });
+  });
+})();
+</script>
+<?php endif; ?>

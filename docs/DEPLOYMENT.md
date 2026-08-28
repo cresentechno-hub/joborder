@@ -4,6 +4,7 @@
 - PHP 8.1+ with `pdo_mysql` and `fileinfo` extensions enabled
 - MySQL 8.0+ (or MariaDB 10.6+)
 - Apache with `mod_rewrite` and `mod_headers` enabled
+- `poppler-utils` (for the `pdftotext` command) — powers the "Read Quotation & Auto-Fill" button on the New Job Order form. Install with `apt install poppler-utils` (Debian/Ubuntu) or `yum install poppler-utils` (RHEL/CentOS), then set `PDFTOTEXT_BINARY` in `config/config.php` to `'pdftotext'` (it'll be on the system PATH). Without this, the auto-fill button simply does nothing useful — manual entry still works fine.
 
 ## First-time setup
 1. Copy the project to the server. The web root **must** point at the `public/` folder — never the project root, or the `src/`, `config/`, and `database/` folders become downloadable.

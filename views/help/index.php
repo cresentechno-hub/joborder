@@ -6,8 +6,13 @@
 <div class="card" style="margin-bottom:20px;">
   <h3 style="margin-top:0;">Job Order Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
-    Every job order starts from a quotation. Upload the quotation file, fill in what it says, then track the
-    job through its stages as work progresses.
+    Every job order starts from a quotation. Upload the quotation file, then click
+    <strong>Read Quotation &amp; Auto-Fill</strong> - the system reads the PDF and fills in Quotation No,
+    Customer Name, Total Cost, and Job Start Date (today) for you. This only works for real PDF quotations
+    (not scanned photos/images) that follow the standard Cresentech layout (<code>Our Ref</code>,
+    <code>To</code>, <code>TOTAL</code>). Always double-check the auto-filled values before submitting - if a
+    field couldn't be read, it's called out so you can type it in yourself. Then track the job through its
+    stages as work progresses.
   </p>
   <div style="overflow-x:auto;">
     <table class="data-table">

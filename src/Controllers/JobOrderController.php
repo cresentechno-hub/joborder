@@ -11,6 +11,7 @@ use App\Models\JobOrder;
 use App\Models\JobStage;
 use App\Models\User;
 use App\Services\FileUploadService;
+use App\Services\QuotationExtractor;
 use DateTime;
 use Throwable;
 
@@ -63,6 +64,39 @@ final class JobOrderController extends Controller
             'stages' => JobStage::allActive(),
             'users'  => User::allActive(),
         ]);
+    }
+
+    /**
+     * AJAX endpoint backing the "Read Quotation" button on the create form.
+     * Best-effort text extraction only — never blocks or replaces manual
+     * entry. Doesn't persist the file; the same file gets uploaded again
+     * for real when the form is actually submitted.
+     */
+    public function extractQuotation(array $params = []): void
+    {
+        if (!verify_csrf()) {
+            $this->json(['error' => 'Your session expired, please refresh and try again.'], 419);
+        }
+
+        $file = $_FILES['quotation_file'] ?? null;
+        if (!$file || $file['error'] === UPLOAD_ERR_NO_FILE) {
+            $this->json(['error' => 'No file was uploaded.'], 422);
+        }
+        if ($file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            $this->json(['error' => 'Upload failed, please try again.'], 422);
+        }
+
+        $maxBytes = (int) setting('upload_max_size_mb', (string) UPLOAD_MAX_SIZE_MB) * 1024 * 1024;
+        if ($file['size'] > $maxBytes) {
+            $this->json(['error' => 'File is too large.'], 422);
+        }
+
+        if (strtolower(pathinfo($file['name'], PATHINFO_EXTENSION)) !== 'pdf') {
+            $this->json(['quotation_no' => null, 'customer_name' => null, 'total_cost' => null,
+                'note' => 'Auto-fill only works for PDF quotations — please enter the details manually.']);
+        }
+
+        $this->json(QuotationExtractor::extract($file['tmp_name']));
     }
 
     public function store(array $params = []): void

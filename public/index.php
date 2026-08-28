@@ -37,6 +37,9 @@ $router->get('/job-orders/create', [JobOrderController::class, 'create'], [
 $router->post('/job-orders', [JobOrderController::class, 'store'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.create'],
 ]);
+$router->post('/job-orders/extract-quotation', [JobOrderController::class, 'extractQuotation'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.create'],
+]);
 $router->get('/job-orders/{id}/edit', [JobOrderController::class, 'edit'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
 ]);

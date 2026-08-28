@@ -24,6 +24,14 @@ define('UPLOAD_PO_REL', 'uploads/po');
 
 define('STAGE_PENDING_ALERT_DAYS', 7);
 
+// Path to the pdftotext binary (poppler-utils), used to auto-fill the
+// quotation no / customer name / total cost from an uploaded quotation PDF.
+// On this Laragon dev machine it ships bundled with Git for Windows.
+// On a Linux production server: `apt install poppler-utils` (Debian/Ubuntu)
+// or `yum install poppler-utils` (RHEL/CentOS), then this can just be
+// 'pdftotext' since it lands on the system PATH.
+define('PDFTOTEXT_BINARY', 'C:\\laragon\\bin\\git\\mingw64\\bin\\pdftotext.exe');
+
 if (APP_DEBUG) {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
