@@ -18,9 +18,13 @@ define('UPLOAD_MAX_SIZE_MB', 10);
 define('UPLOAD_ALLOWED_TYPES', ['pdf', 'jpg', 'jpeg', 'png']);
 define('UPLOAD_QUOTATION_DIR', ROOT_PATH . '/public/uploads/quotations');
 define('UPLOAD_PO_DIR', ROOT_PATH . '/public/uploads/po');
+define('UPLOAD_INVOICE_DIR', ROOT_PATH . '/public/uploads/invoices');
+define('UPLOAD_DO_DIR', ROOT_PATH . '/public/uploads/do');
 // Relative to /public — used to build browser-facing links to uploaded files
 define('UPLOAD_QUOTATION_REL', 'uploads/quotations');
 define('UPLOAD_PO_REL', 'uploads/po');
+define('UPLOAD_INVOICE_REL', 'uploads/invoices');
+define('UPLOAD_DO_REL', 'uploads/do');
 
 define('STAGE_PENDING_ALERT_DAYS', 7);
 

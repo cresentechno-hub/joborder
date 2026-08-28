@@ -33,12 +33,10 @@ $isEdit = $mode === 'edit';
           <span style="color:var(--color-text-muted);">(upload a new file to replace)</span>
         </div>
       <?php endif; ?>
-      <?php if (!$isEdit): ?>
-        <button type="button" id="read-quotation-btn" class="btn btn-outline" style="margin-top:8px; padding:6px 12px; font-size:13px;" disabled>
-          Read Quotation &amp; Auto-Fill
-        </button>
-        <div id="read-quotation-status" style="margin-top:6px; font-size:12px;"></div>
-      <?php endif; ?>
+      <button type="button" id="read-quotation-btn" class="btn btn-outline" style="margin-top:8px; padding:6px 12px; font-size:13px;" disabled>
+        Read Quotation &amp; Auto-Fill
+      </button>
+      <div id="read-quotation-status" style="margin-top:6px; font-size:12px;"></div>
     </div>
 
     <div class="form-group">
@@ -127,9 +125,9 @@ $isEdit = $mode === 'edit';
   </div>
 </form>
 
-<?php if (!$isEdit): ?>
 <script>
 (function () {
+  var isEditMode = <?= $isEdit ? 'true' : 'false' ?>;
   var fileInput = document.getElementById('quotation_file');
   var readBtn = document.getElementById('read-quotation-btn');
   var status = document.getElementById('read-quotation-status');
@@ -181,6 +179,13 @@ $isEdit = $mode === 'edit';
           missed.push('Customer Name');
         }
 
+        if (data.subject) {
+          document.getElementById('subject').value = data.subject;
+          filled.push('Subject');
+        } else {
+          missed.push('Subject');
+        }
+
         if (data.total_cost) {
           document.getElementById('total_cost').value = data.total_cost;
           filled.push('Total Cost');
@@ -188,18 +193,23 @@ $isEdit = $mode === 'edit';
           missed.push('Total Cost');
         }
 
-        // Job Start Date is always today's date, not read from the document.
-        var today = new Date();
-        var iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-        document.getElementById('job_start_date').value = iso;
-        filled.push('Job Start Date');
+        // Job Start Date only auto-fills to today on a brand-new job order —
+        // on Edit it would silently overwrite the real (possibly past)
+        // start date just because someone re-uploaded a corrected file.
+        if (!isEditMode) {
+          var today = new Date();
+          var iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+          document.getElementById('job_start_date').value = iso;
+          filled.push('Job Start Date');
+        }
 
         if (data.note) {
           status.style.color = 'var(--color-text-muted)';
           status.textContent = data.note;
         } else if (missed.length) {
           status.style.color = 'var(--color-amber, #D97706)';
-          status.textContent = 'Filled: ' + filled.join(', ') + '. Please check/enter manually: ' + missed.join(', ') + '.';
+          status.textContent = (filled.length ? 'Filled: ' + filled.join(', ') + '. ' : '')
+            + 'Please check/enter manually: ' + missed.join(', ') + '.';
         } else {
           status.style.color = 'var(--color-success)';
           status.textContent = 'Auto-filled from the quotation - please double-check before submitting.';
@@ -216,4 +226,3 @@ $isEdit = $mode === 'edit';
   });
 })();
 </script>
-<?php endif; ?>

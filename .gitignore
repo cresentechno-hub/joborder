@@ -1,8 +1,12 @@
-# Uploaded quotation/PO files are runtime data, not source — keep the folders (via .htaccess) but not their contents
+# Uploaded quotation/PO/invoice/DO files are runtime data, not source — keep the folders (via .htaccess) but not their contents
 /public/uploads/quotations/*
 !/public/uploads/quotations/.htaccess
 /public/uploads/po/*
 !/public/uploads/po/.htaccess
+/public/uploads/invoices/*
+!/public/uploads/invoices/.htaccess
+/public/uploads/do/*
+!/public/uploads/do/.htaccess
 
 # Application logs
 /storage/logs/*.log

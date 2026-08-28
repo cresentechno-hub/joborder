@@ -8,6 +8,7 @@ use App\Controllers\ActivityLogController;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\HelpController;
+use App\Controllers\JobOrderCommentController;
 use App\Controllers\JobOrderController;
 use App\Controllers\RoleController;
 use App\Controllers\SettingsController;
@@ -38,7 +39,9 @@ $router->post('/job-orders', [JobOrderController::class, 'store'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.create'],
 ]);
 $router->post('/job-orders/extract-quotation', [JobOrderController::class, 'extractQuotation'], [
-    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.create'],
+    // job_order.view (not .create) — this button is used from both the
+    // create AND edit forms; every role with create or edit also has view.
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.view'],
 ]);
 $router->get('/job-orders/{id}/edit', [JobOrderController::class, 'edit'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
@@ -48,6 +51,9 @@ $router->post('/job-orders/{id}', [JobOrderController::class, 'update'], [
 ]);
 $router->post('/job-orders/{id}/delete', [JobOrderController::class, 'destroy'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.delete'],
+]);
+$router->post('/job-orders/{id}/comments', [JobOrderCommentController::class, 'store'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
 ]);
 
 // Users

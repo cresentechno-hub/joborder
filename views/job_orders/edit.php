@@ -9,3 +9,5 @@
 <div class="card">
   <?php $mode = 'edit'; include ROOT_PATH . '/views/job_orders/_form.php'; ?>
 </div>
+
+<?php include ROOT_PATH . '/views/job_orders/_comments.php'; ?>

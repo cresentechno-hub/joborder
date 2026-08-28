@@ -182,7 +182,52 @@ CREATE TABLE `job_order_stage_history` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 9. activity_logs (general admin/audit log)
+-- 9. job_order_comments (progress-update log: stage change, invoice/DO
+--    upload, reassignment, remark — added from the job order edit form)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `job_order_comments`;
+CREATE TABLE `job_order_comments` (
+  `id`                          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `job_order_id`                BIGINT UNSIGNED NOT NULL,
+  `stage_id`                    INT UNSIGNED NOT NULL,
+  `invoice_no`                  VARCHAR(100) NULL,
+  `invoice_file_path`           VARCHAR(255) NULL,
+  `invoice_file_original_name`  VARCHAR(255) NULL,
+  `do_file_path`                VARCHAR(255) NULL,
+  `do_file_original_name`       VARCHAR(255) NULL,
+  `assigned_to`                 BIGINT UNSIGNED NOT NULL,
+  `remark`                      TEXT NULL,
+  `created_by`                  BIGINT UNSIGNED NOT NULL,
+  `created_at`                  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_joc_job_order` (`job_order_id`),
+  KEY `idx_joc_created_at` (`created_at`),
+  CONSTRAINT `fk_joc_job_order`
+    FOREIGN KEY (`job_order_id`) REFERENCES `job_orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_joc_stage`
+    FOREIGN KEY (`stage_id`) REFERENCES `job_stages` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_joc_assigned_to`
+    FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_joc_created_by`
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10. job_order_comment_cc (multi-user CC list per comment — record
+--     keeping only, this app has no outbound email/notification system)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `job_order_comment_cc`;
+CREATE TABLE `job_order_comment_cc` (
+  `comment_id` BIGINT UNSIGNED NOT NULL,
+  `user_id`    BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`comment_id`, `user_id`),
+  CONSTRAINT `fk_jocc_comment`
+    FOREIGN KEY (`comment_id`) REFERENCES `job_order_comments` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_jocc_user`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 11. activity_logs (general admin/audit log)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `activity_logs`;
 CREATE TABLE `activity_logs` (
@@ -201,7 +246,7 @@ CREATE TABLE `activity_logs` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 10. settings (system settings key-value store)
+-- 12. settings (system settings key-value store)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (

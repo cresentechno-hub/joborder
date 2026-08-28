@@ -25,9 +25,14 @@ final class FileUploadService
 
     /**
      * @param array $file One entry from $_FILES, e.g. $_FILES['quotation_file']
+     * @param ?string $desiredFileName When given, the stored filename becomes
+     *   this (sanitized) + the real extension — e.g. "INV-0456" — instead of
+     *   a random hex name. Caller is responsible for uniqueness (e.g. scoping
+     *   $targetDir to a per-job-order subfolder), since a fixed name can
+     *   overwrite a prior file with the same name in the same folder.
      * @return array{stored_name:string, original_name:string, path:string}
      */
-    public static function upload(array $file, string $targetDir): array
+    public static function upload(array $file, string $targetDir, ?string $desiredFileName = null): array
     {
         if (!isset($file['error']) || $file['error'] === UPLOAD_ERR_NO_FILE) {
             throw new \InvalidArgumentException('No file was uploaded.');
@@ -67,7 +72,9 @@ final class FileUploadService
             throw new \RuntimeException('Could not create upload directory.');
         }
 
-        $storedName = bin2hex(random_bytes(16)) . '.' . $extension;
+        $storedName = $desiredFileName !== null
+            ? self::sanitizeFileName($desiredFileName) . '.' . $extension
+            : bin2hex(random_bytes(16)) . '.' . $extension;
         $destination = rtrim($targetDir, '/\\') . DIRECTORY_SEPARATOR . $storedName;
 
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
@@ -79,5 +86,13 @@ final class FileUploadService
             'original_name' => $originalName,
             'path'          => $destination,
         ];
+    }
+
+    /** Strips anything that isn't safe in a filename (path traversal, slashes, etc.) — this can come from user input. */
+    private static function sanitizeFileName(string $name): string
+    {
+        $clean = preg_replace('/[^A-Za-z0-9_-]/', '_', $name) ?? '';
+        $clean = trim($clean, '_');
+        return $clean !== '' ? substr($clean, 0, 100) : 'file';
     }
 }

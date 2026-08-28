@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace App\Services;
 
 /**
- * Best-effort extraction of quotation_no, customer_name, and total_cost from
- * an uploaded quotation PDF, via the pdftotext (poppler-utils) command-line
- * tool — no OCR, no AI, no Composer dependency. Only works for text-based
- * PDFs (not scanned/photographed documents), and is tuned against
- * Cresentech's own quotation template:
+ * Best-effort extraction of quotation_no, customer_name, subject, and
+ * total_cost from an uploaded quotation PDF, via the pdftotext
+ * (poppler-utils) command-line tool — no OCR, no AI, no Composer
+ * dependency. Only works for text-based PDFs (not scanned/photographed
+ * documents), and is tuned against Cresentech's own quotation template:
  *
  *   Date      : 27th June 2026
  *   To        : Badan Pengurusan Bersama AmanSuri     <- customer_name
  *   Attn      : Mr. Haniz
  *   Our Ref   : QF0333/2026                            <- quotation_no
+ *
+ *   Subject : QUOTATION FOR REPLACEMENT FAULTY CCTV... <- subject
  *   ...
  *   TOTAL :                                            <- total_cost (nearby)
  *
@@ -23,8 +25,9 @@ namespace App\Services;
  */
 final class QuotationExtractor
 {
-    /** @return array{quotation_no: ?string, customer_name: ?string, total_cost: ?float} */
     /**
+     * @return array{quotation_no: ?string, customer_name: ?string, subject: ?string, total_cost: ?float}
+     *
      * $pdfPath is typically a PHP upload tmp_name (e.g. "php1A2B.tmp") which
      * has no .pdf extension of its own — the caller is responsible for
      * having already checked the *original* uploaded filename ends in
@@ -34,7 +37,7 @@ final class QuotationExtractor
      */
     public static function extract(string $pdfPath): array
     {
-        $result = ['quotation_no' => null, 'customer_name' => null, 'total_cost' => null];
+        $result = ['quotation_no' => null, 'customer_name' => null, 'subject' => null, 'total_cost' => null];
 
         if (!is_file($pdfPath)) {
             return $result;
@@ -44,6 +47,7 @@ final class QuotationExtractor
         if ($layoutText !== null) {
             $result['quotation_no'] = self::matchLabel($layoutText, 'Our Ref');
             $result['customer_name'] = self::matchLabel($layoutText, 'To');
+            $result['subject'] = self::matchLabel($layoutText, 'Subject');
         }
 
         $rawText = self::runPdfToText($pdfPath, false);

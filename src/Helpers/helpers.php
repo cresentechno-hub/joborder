@@ -32,6 +32,14 @@ function old(string $key, string $default = ''): string
     return $default;
 }
 
+/** Like old(), but for multi-value fields (e.g. a multi-select) — returns string[] instead of casting to a scalar. */
+function old_array(string $key): array
+{
+    $value = $_SESSION['_old'][$key] ?? [];
+    unset($_SESSION['_old'][$key]);
+    return is_array($value) ? array_map('strval', $value) : [];
+}
+
 /** Stash the submitted form data so old() can re-populate the form on redirect. */
 function flash_input(array $data): void
 {

@@ -27,6 +27,7 @@
   <table class="data-table">
     <thead>
       <tr>
+        <th></th>
         <th>Quotation No</th>
         <th>Customer</th>
         <th>Subject</th>
@@ -36,7 +37,6 @@
         <th>Assigned To</th>
         <?php if ($showTeamColumn): ?><th>Team</th><?php endif; ?>
         <th>Stage</th>
-        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -45,6 +45,17 @@
       <?php endif; ?>
       <?php foreach ($jobOrders as $jo): ?>
         <tr>
+          <td style="white-space:nowrap;">
+            <a href="/job-orders/<?= (int) $jo['id'] ?>/edit">Edit</a>
+            <?php if (\App\Core\Auth::can('job_order.delete')): ?>
+              &nbsp;|&nbsp;
+              <form method="POST" action="/job-orders/<?= (int) $jo['id'] ?>/delete" style="display:inline;"
+                    onsubmit="return confirm('Delete job order <?= e($jo['quotation_no']) ?>? This cannot be undone from the UI.');">
+                <?= csrf_field() ?>
+                <button type="submit" style="background:none; border:none; padding:0; color: var(--color-danger); cursor:pointer; font-size:13px;">Delete</button>
+              </form>
+            <?php endif; ?>
+          </td>
           <td><?= e($jo['quotation_no']) ?></td>
           <td><?= e($jo['customer_name']) ?></td>
           <td class="wrap" style="min-width:200px;"><?= e($jo['subject']) ?></td>
@@ -59,17 +70,6 @@
             <span class="badge" style="background:<?= e($jo['stage_color'] ?: '#64748B') ?>;">
               <?= e($jo['stage_code']) ?> - <?= e($jo['stage_name']) ?>
             </span>
-          </td>
-          <td style="white-space:nowrap;">
-            <a href="/job-orders/<?= (int) $jo['id'] ?>/edit">Edit</a>
-            <?php if (\App\Core\Auth::can('job_order.delete')): ?>
-              &nbsp;|&nbsp;
-              <form method="POST" action="/job-orders/<?= (int) $jo['id'] ?>/delete" style="display:inline;"
-                    onsubmit="return confirm('Delete job order <?= e($jo['quotation_no']) ?>? This cannot be undone from the UI.');">
-                <?= csrf_field() ?>
-                <button type="submit" style="background:none; border:none; padding:0; color: var(--color-danger); cursor:pointer; font-size:13px;">Delete</button>
-              </form>
-            <?php endif; ?>
           </td>
         </tr>
       <?php endforeach; ?>

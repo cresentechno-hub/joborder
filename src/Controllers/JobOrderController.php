@@ -6,8 +6,10 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Controller;
+use App\Core\JobOrderAccessGuard;
 use App\Models\ActivityLog;
 use App\Models\JobOrder;
+use App\Models\JobOrderComment;
 use App\Models\JobStage;
 use App\Models\User;
 use App\Services\FileUploadService;
@@ -17,6 +19,8 @@ use Throwable;
 
 final class JobOrderController extends Controller
 {
+    use JobOrderAccessGuard;
+
     public function index(array $params = []): void
     {
         $canViewCompleted = Auth::can('job_order.view_completed');
@@ -67,10 +71,10 @@ final class JobOrderController extends Controller
     }
 
     /**
-     * AJAX endpoint backing the "Read Quotation" button on the create form.
-     * Best-effort text extraction only — never blocks or replaces manual
-     * entry. Doesn't persist the file; the same file gets uploaded again
-     * for real when the form is actually submitted.
+     * AJAX endpoint backing the "Read Quotation" button on both the create
+     * and edit forms. Best-effort text extraction only — never blocks or
+     * replaces manual entry. Doesn't persist the file; the same file gets
+     * uploaded again for real when the form is actually submitted.
      */
     public function extractQuotation(array $params = []): void
     {
@@ -92,7 +96,7 @@ final class JobOrderController extends Controller
         }
 
         if (strtolower(pathinfo($file['name'], PATHINFO_EXTENSION)) !== 'pdf') {
-            $this->json(['quotation_no' => null, 'customer_name' => null, 'total_cost' => null,
+            $this->json(['quotation_no' => null, 'customer_name' => null, 'subject' => null, 'total_cost' => null,
                 'note' => 'Auto-fill only works for PDF quotations — please enter the details manually.']);
         }
 
@@ -172,6 +176,7 @@ final class JobOrderController extends Controller
             'jobOrder' => $jobOrder,
             'stages'   => JobStage::allActive(),
             'users'    => User::allActive(),
+            'comments' => JobOrderComment::findByJobOrderId((int) $jobOrder['id']),
         ]);
     }
 
@@ -301,53 +306,5 @@ final class JobOrderController extends Controller
         }
 
         return $errors;
-    }
-
-    /**
-     * Enforces the same team scoping as the list view on direct access by ID
-     * (edit/update/delete) — without this, a Sales user could bypass the
-     * list filter entirely just by guessing/typing another team's job order URL.
-     * 404s rather than 403s so team membership isn't leaked either way.
-     */
-    private function assertTeamAccess(array $jobOrder): void
-    {
-        if (Auth::can('job_order.view_all')) {
-            return;
-        }
-
-        $assignee = User::findById((int) $jobOrder['assigned_to']);
-        $assigneeTeamId = $assignee['team_id'] ?? null;
-        $myTeamId = Auth::user()['team_id'] ?? null;
-
-        if ($myTeamId === null || $assigneeTeamId === null || (int) $assigneeTeamId !== (int) $myTeamId) {
-            $this->notFound();
-        }
-    }
-
-    /**
-     * Completed (stage 7) / Cancelled (stage 8) job orders are Admin-only.
-     * Same reasoning as assertTeamAccess: the list already filters these
-     * out, but direct access by ID must be blocked too, or the filter is
-     * cosmetic. Checked against the job order's CURRENT stage — a non-admin
-     * still may move a job order INTO stage 7/8 (see it disappear from their
-     * own view afterwards), they just can't view/edit/delete one already there.
-     */
-    private function assertStageAccess(array $jobOrder): void
-    {
-        if (Auth::can('job_order.view_completed')) {
-            return;
-        }
-
-        $stage = JobStage::findById((int) $jobOrder['stage_id']);
-        if ($stage && in_array($stage['stage_code'], ['7', '8'], true)) {
-            $this->notFound();
-        }
-    }
-
-    private function notFound(): never
-    {
-        http_response_code(404);
-        require ROOT_PATH . '/views/errors/404.php';
-        exit;
     }
 }
