@@ -126,7 +126,10 @@ final class JobOrder
     }
 
     /**
-     * @param array{q?:string, stage_id?:int|null} $filters
+     * @param array{q?:string, stage_id?:int|null, team_id?:int|null} $filters
+     *   `team_id` restricts results to that team ONLY when the key is present
+     *   (0 is valid — it means "restricted, and has no team, so sees nothing
+     *   until assigned one"). Omit the key entirely for unrestricted access.
      * @return array{data: array, total: int, page: int, per_page: int}
      */
     public static function paginate(array $filters, int $page, int $perPage): array
@@ -143,6 +146,11 @@ final class JobOrder
         if (!empty($filters['stage_id'])) {
             $where[] = 'stage_id = :stage_id';
             $params['stage_id'] = $filters['stage_id'];
+        }
+
+        if (array_key_exists('team_id', $filters)) {
+            $where[] = 'assigned_to IN (SELECT id FROM users WHERE team_id = :team_id)';
+            $params['team_id'] = $filters['team_id'];
         }
 
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
@@ -172,45 +180,76 @@ final class JobOrder
         ];
     }
 
-    /** Job orders created (captured into the system) this calendar year. */
-    public static function countThisYear(): int
+    /**
+     * Job orders created (captured into the system) this calendar year.
+     * $teamId scopes the count to that team. Pass 0 (not null) for a user
+     * restricted to a team who has none assigned yet — null means unrestricted.
+     */
+    public static function countThisYear(?int $teamId = null): int
     {
         $pdo = Database::getInstance();
-        $stmt = $pdo->query(
-            'SELECT COUNT(*) FROM job_orders WHERE is_deleted = 0 AND YEAR(created_at) = YEAR(CURDATE())'
-        );
+        $sql = 'SELECT COUNT(*) FROM job_orders WHERE is_deleted = 0 AND YEAR(created_at) = YEAR(CURDATE())';
+        $params = [];
+
+        if ($teamId !== null) {
+            $sql .= ' AND assigned_to IN (SELECT id FROM users WHERE team_id = :team_id)';
+            $params['team_id'] = $teamId;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         return (int) $stmt->fetchColumn();
     }
 
-    /** Every active stage with its live job count (0 for empty stages), in workflow order. */
-    public static function countByStage(): array
+    /**
+     * Every active stage with its live job count (0 for empty stages), in
+     * workflow order. $teamId scopes counts to job orders assigned to that team.
+     */
+    public static function countByStage(?int $teamId = null): array
     {
         $pdo = Database::getInstance();
-        return $pdo->query(
+        $teamJoin = '';
+        $params = [];
+
+        if ($teamId !== null) {
+            $teamJoin = ' AND jo.assigned_to IN (SELECT id FROM users WHERE team_id = :team_id)';
+            $params['team_id'] = $teamId;
+        }
+
+        $stmt = $pdo->prepare(
             'SELECT js.id AS stage_id, js.stage_code, js.stage_name, js.color_code AS stage_color,
                     COUNT(jo.id) AS total
              FROM job_stages js
-             LEFT JOIN job_orders jo ON jo.stage_id = js.id AND jo.is_deleted = 0
+             LEFT JOIN job_orders jo ON jo.stage_id = js.id AND jo.is_deleted = 0' . $teamJoin . '
              WHERE js.is_active = 1
              GROUP BY js.id, js.stage_code, js.stage_name, js.color_code, js.sort_order
              ORDER BY js.sort_order'
-        )->fetchAll();
+        );
+        $stmt->execute($params);
+        return $stmt->fetchAll();
     }
 
     /**
      * Job orders that have sat in their current stage longer than $days,
      * excluding the two terminal stages (7 Sales Completed, 8 Cancel PO) —
-     * those are finished, not "pending".
+     * those are finished, not "pending". $teamId scopes to that team.
      */
-    public static function stuckJobs(int $days): array
+    public static function stuckJobs(int $days, ?int $teamId = null): array
     {
         $pdo = Database::getInstance();
-        $stmt = $pdo->prepare(
-            "SELECT * FROM v_job_orders_overview
-             WHERE days_in_current_stage > :days AND stage_code NOT IN ('7', '8')
-             ORDER BY days_in_current_stage DESC"
-        );
-        $stmt->execute(['days' => $days]);
+        $sql = "SELECT * FROM v_job_orders_overview
+                WHERE days_in_current_stage > :days AND stage_code NOT IN ('7', '8')";
+        $params = ['days' => $days];
+
+        if ($teamId !== null) {
+            $sql .= ' AND assigned_to IN (SELECT id FROM users WHERE team_id = :team_id)';
+            $params['team_id'] = $teamId;
+        }
+
+        $sql .= ' ORDER BY days_in_current_stage DESC';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 }

@@ -8,6 +8,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Models\ActivityLog;
 use App\Models\Role;
+use App\Models\SalesTeam;
 use App\Models\User;
 
 final class UserController extends Controller
@@ -23,6 +24,7 @@ final class UserController extends Controller
     {
         $this->view('users/create', [
             'roles' => Role::all(),
+            'teams' => SalesTeam::allActive(),
         ]);
     }
 
@@ -51,6 +53,7 @@ final class UserController extends Controller
             'email'         => trim($input['email']),
             'full_name'     => trim($input['full_name']),
             'role_id'       => (int) $input['role_id'],
+            'team_id'       => !empty($input['team_id']) ? (int) $input['team_id'] : null,
             'password_hash' => password_hash((string) $input['password'], PASSWORD_BCRYPT),
             'is_active'     => 1,
         ]);
@@ -70,6 +73,7 @@ final class UserController extends Controller
         $this->view('users/edit', [
             'targetUser' => $user,
             'roles'      => Role::all(),
+            'teams'      => SalesTeam::allActive(),
         ]);
     }
 
@@ -113,6 +117,7 @@ final class UserController extends Controller
             'full_name' => trim($input['full_name']),
             'email'     => trim($input['email']),
             'role_id'   => (int) $input['role_id'],
+            'team_id'   => !empty($input['team_id']) ? (int) $input['team_id'] : null,
         ]);
 
         if ($newPassword !== '') {
@@ -183,6 +188,10 @@ final class UserController extends Controller
 
         if (empty($input['role_id']) || !Role::findById((int) $input['role_id'])) {
             $errors['role_id'] = 'Please select a valid role.';
+        }
+
+        if (!empty($input['team_id']) && !SalesTeam::findById((int) $input['team_id'])) {
+            $errors['team_id'] = 'Please select a valid sales team.';
         }
 
         return $errors;

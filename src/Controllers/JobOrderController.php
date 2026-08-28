@@ -22,6 +22,11 @@ final class JobOrderController extends Controller
             'q'        => trim((string) $this->input('q', '')),
             'stage_id' => (int) $this->input('stage_id', 0) ?: null,
         ];
+        if (!Auth::can('job_order.view_all')) {
+            // 0 (not null) when the user has no team yet — restricted with
+            // nothing to show, never "unrestricted" by accident.
+            $filters['team_id'] = (int) (Auth::user()['team_id'] ?? 0);
+        }
         $page = max(1, (int) $this->input('page', 1));
         $perPage = max(1, (int) setting('items_per_page', '20'));
 
@@ -111,6 +116,7 @@ final class JobOrderController extends Controller
         if (!$jobOrder) {
             $this->notFound();
         }
+        $this->assertTeamAccess($jobOrder);
 
         $this->view('job_orders/edit', [
             'jobOrder' => $jobOrder,
@@ -132,6 +138,7 @@ final class JobOrderController extends Controller
         if (!$jobOrder) {
             $this->notFound();
         }
+        $this->assertTeamAccess($jobOrder);
 
         $input = $_POST;
         $errors = $this->validate($input, $id);
@@ -194,6 +201,12 @@ final class JobOrderController extends Controller
             $this->redirect('/job-orders');
         }
 
+        $jobOrder = JobOrder::findById($id);
+        if (!$jobOrder) {
+            $this->notFound();
+        }
+        $this->assertTeamAccess($jobOrder);
+
         JobOrder::softDelete($id, (int) Auth::id());
         ActivityLog::record(Auth::id(), 'job_order.delete', 'job_order', $id);
         flash('success', 'Job order deleted.');
@@ -236,6 +249,27 @@ final class JobOrderController extends Controller
         }
 
         return $errors;
+    }
+
+    /**
+     * Enforces the same team scoping as the list view on direct access by ID
+     * (edit/update/delete) — without this, a Sales user could bypass the
+     * list filter entirely just by guessing/typing another team's job order URL.
+     * 404s rather than 403s so team membership isn't leaked either way.
+     */
+    private function assertTeamAccess(array $jobOrder): void
+    {
+        if (Auth::can('job_order.view_all')) {
+            return;
+        }
+
+        $assignee = User::findById((int) $jobOrder['assigned_to']);
+        $assigneeTeamId = $assignee['team_id'] ?? null;
+        $myTeamId = Auth::user()['team_id'] ?? null;
+
+        if ($myTeamId === null || $assigneeTeamId === null || (int) $assigneeTeamId !== (int) $myTeamId) {
+            $this->notFound();
+        }
     }
 
     private function notFound(): never

@@ -16,6 +16,7 @@
         <th>Username</th>
         <th>Email</th>
         <th>Role</th>
+        <th>Team</th>
         <th>Status</th>
         <th>Last Login</th>
         <th class="actions-cell"></th>
@@ -28,6 +29,7 @@
           <td><?= e($u['username']) ?></td>
           <td><?= e($u['email']) ?></td>
           <td><span class="badge-outline"><?= e($u['role_name']) ?></span></td>
+          <td><?= $u['team_name'] ? e($u['team_name']) : '<span style="color:var(--color-text-muted);">—</span>' ?></td>
           <td>
             <?php if ((int) $u['is_active'] === 1): ?>
               <span class="badge" style="background: var(--color-success);">Active</span>

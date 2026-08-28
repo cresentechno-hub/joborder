@@ -14,12 +14,16 @@ final class DashboardController extends Controller
     {
         $alertDays = max(1, (int) setting('stage_pending_alert_days', '7'));
 
+        // null = unrestricted (sees every team). 0 = restricted with no team
+        // assigned yet (sees nothing) — never confused with "unrestricted".
+        $teamId = Auth::can('job_order.view_all') ? null : (int) (Auth::user()['team_id'] ?? 0);
+
         $this->view('dashboard/index', [
-            'user'           => Auth::user(),
-            'quotationsThisYear' => JobOrder::countThisYear(),
-            'stageCounts'    => JobOrder::countByStage(),
-            'stuckJobs'      => JobOrder::stuckJobs($alertDays),
-            'alertDays'      => $alertDays,
+            'user'               => Auth::user(),
+            'quotationsThisYear' => JobOrder::countThisYear($teamId),
+            'stageCounts'        => JobOrder::countByStage($teamId),
+            'stuckJobs'          => JobOrder::stuckJobs($alertDays, $teamId),
+            'alertDays'          => $alertDays,
         ]);
     }
 }

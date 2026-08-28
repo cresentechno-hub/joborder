@@ -105,6 +105,19 @@
 </div>
 
 <div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">Sales Teams Module <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(Admin only)</span></h3>
+  <p style="color: var(--color-text-muted); font-size:13px;">
+    Sales teams control who can see which job orders. Create teams under <strong>Teams</strong>, then assign each
+    Sales-role user to a team from their entry in <strong>Users</strong>. A Sales user only sees job orders
+    assigned to a member of their own team - Team A cannot see Team B's job orders, and vice versa. Admin,
+    Manager, and Viewer are unaffected and always see every job order regardless of team.
+  </p>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    A Sales user with no team assigned sees no job orders until an Admin assigns them one.
+  </p>
+</div>
+
+<div class="card" style="margin-top:20px;">
   <h3 style="margin-top:0;">Settings Module <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(Admin only)</span></h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
     System-wide options that apply immediately after saving - no redeploy needed. This includes the application

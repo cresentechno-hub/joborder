@@ -50,7 +50,21 @@ CREATE TABLE `role_permissions` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 4. users (system login accounts)
+-- 4. sales_teams (visibility grouping — Sales-role users only see job
+--    orders assigned to a teammate; other roles are unrestricted)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `sales_teams`;
+CREATE TABLE `sales_teams` (
+  `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `name`        VARCHAR(100) NOT NULL,
+  `description` VARCHAR(255) NULL,
+  `is_active`   TINYINT(1)   NOT NULL DEFAULT 1,
+  `created_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_sales_teams_name` (`name`)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 5. users (system login accounts)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
@@ -60,6 +74,7 @@ CREATE TABLE `users` (
   `password_hash` VARCHAR(255) NOT NULL,
   `full_name`     VARCHAR(150) NOT NULL,
   `role_id`       INT UNSIGNED NOT NULL,
+  `team_id`       INT UNSIGNED NULL COMMENT 'sales team, used to scope visibility for team-restricted roles',
   `is_active`     TINYINT(1)   NOT NULL DEFAULT 1,
   `failed_login_attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `locked_until`  DATETIME     NULL COMMENT 'brute-force lockout expiry',
@@ -69,12 +84,15 @@ CREATE TABLE `users` (
   UNIQUE KEY `uq_users_username` (`username`),
   UNIQUE KEY `uq_users_email` (`email`),
   KEY `idx_users_role` (`role_id`),
+  KEY `idx_users_team` (`team_id`),
   CONSTRAINT `fk_users_role`
-    FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT
+    FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_users_team`
+    FOREIGN KEY (`team_id`) REFERENCES `sales_teams` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 5. job_stages (lookup / ordered list, editable by Admin)
+-- 6. job_stages (lookup / ordered list, editable by Admin)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `job_stages`;
 CREATE TABLE `job_stages` (
@@ -89,7 +107,7 @@ CREATE TABLE `job_stages` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 6. job_orders (core entity: quotation capture + job order tracking)
+-- 7. job_orders (core entity: quotation capture + job order tracking)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `job_orders`;
 CREATE TABLE `job_orders` (
@@ -140,7 +158,7 @@ CREATE TABLE `job_orders` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 7. job_order_stage_history (audit trail; powers the "stuck > 7 days
+-- 8. job_order_stage_history (audit trail; powers the "stuck > 7 days
 --    in a stage" dashboard stat and gives a full timeline per job order)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `job_order_stage_history`;
@@ -164,7 +182,7 @@ CREATE TABLE `job_order_stage_history` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 8. activity_logs (general admin/audit log)
+-- 9. activity_logs (general admin/audit log)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `activity_logs`;
 CREATE TABLE `activity_logs` (
@@ -183,7 +201,7 @@ CREATE TABLE `activity_logs` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 9. settings (system settings key-value store)
+-- 10. settings (system settings key-value store)
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (
@@ -254,6 +272,8 @@ SELECT
   DATEDIFF(CURDATE(), DATE(jo.current_stage_since))   AS days_in_current_stage,
   jo.assigned_to,
   au.full_name                                        AS assigned_to_name,
+  au.team_id                                          AS assigned_to_team_id,
+  st.name                                              AS assigned_to_team_name,
   jo.stage_id,
   js.stage_code,
   js.stage_name,
@@ -262,8 +282,9 @@ SELECT
   jo.created_at,
   jo.updated_at
 FROM job_orders jo
-JOIN users au       ON au.id = jo.assigned_to
-JOIN job_stages js  ON js.id = jo.stage_id
+JOIN users au            ON au.id = jo.assigned_to
+JOIN job_stages js       ON js.id = jo.stage_id
+LEFT JOIN sales_teams st ON st.id = au.team_id
 WHERE jo.is_deleted = 0;
 
 -- =====================================================================
@@ -280,6 +301,7 @@ INSERT INTO `roles` (`name`, `description`) VALUES
 -- Permissions
 INSERT INTO `permissions` (`code`, `description`) VALUES
   ('job_order.view',         'View job orders'),
+  ('job_order.view_all',     'View job orders from every sales team, not just your own'),
   ('job_order.create',       'Create job orders (upload quotation/PO)'),
   ('job_order.edit',         'Edit job order details'),
   ('job_order.delete',       'Delete (soft-delete) job orders'),
@@ -296,9 +318,11 @@ SELECT r.id, p.id FROM `roles` r, `permissions` p WHERE r.name = 'Admin';
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name = 'Manager'
-  AND p.code IN ('job_order.view','job_order.create','job_order.edit',
-                 'job_order.change_stage','report.view');
+  AND p.code IN ('job_order.view','job_order.view_all','job_order.create',
+                 'job_order.edit','job_order.change_stage','report.view');
 
+-- Sales intentionally does NOT get job_order.view_all: they only see job
+-- orders assigned to a member of their own sales_teams (see JobOrderController).
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name = 'Sales'
@@ -308,7 +332,12 @@ WHERE r.name = 'Sales'
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name = 'Viewer'
-  AND p.code IN ('job_order.view','report.view');
+  AND p.code IN ('job_order.view','job_order.view_all','report.view');
+
+-- Sales teams (starter examples — Admin can rename/add more under Teams)
+INSERT INTO `sales_teams` (`name`, `description`) VALUES
+  ('Team A', 'Sales team A'),
+  ('Team B', 'Sales team B');
 
 -- Job stages (exact workflow supplied by the business)
 INSERT INTO `job_stages` (`stage_code`, `stage_name`, `sort_order`, `color_code`) VALUES

@@ -1,4 +1,4 @@
-<?php $success = flash('success'); ?>
+<?php $success = flash('success'); $showTeamColumn = \App\Core\Auth::can('job_order.view_all'); ?>
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
   <h2 style="margin:0;">Job Orders</h2>
@@ -34,6 +34,7 @@
         <th>Start Date</th>
         <th style="text-align:center;">Days</th>
         <th>Assigned To</th>
+        <?php if ($showTeamColumn): ?><th>Team</th><?php endif; ?>
         <th>Stage</th>
         <th></th>
       </tr>
@@ -51,6 +52,9 @@
           <td><?= e(format_date($jo['job_start_date'])) ?></td>
           <td style="text-align:center;"><?= (int) $jo['days_elapsed'] ?></td>
           <td><?= e($jo['assigned_to_name']) ?></td>
+          <?php if ($showTeamColumn): ?>
+            <td><?= $jo['assigned_to_team_name'] ? e($jo['assigned_to_team_name']) : '<span style="color:var(--color-text-muted);">—</span>' ?></td>
+          <?php endif; ?>
           <td>
             <span class="badge" style="background:<?= e($jo['stage_color'] ?: '#64748B') ?>;">
               <?= e($jo['stage_code']) ?> - <?= e($jo['stage_name']) ?>

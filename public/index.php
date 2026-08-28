@@ -10,6 +10,7 @@ use App\Controllers\HelpController;
 use App\Controllers\JobOrderController;
 use App\Controllers\RoleController;
 use App\Controllers\SettingsController;
+use App\Controllers\TeamController;
 use App\Controllers\UserController;
 use App\Core\Router;
 use App\Middleware\AuthMiddleware;
@@ -62,6 +63,26 @@ $router->post('/users/{id}', [UserController::class, 'update'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
 $router->post('/users/{id}/toggle-active', [UserController::class, 'toggleActive'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+
+// Sales Teams
+$router->get('/teams', [TeamController::class, 'index'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+$router->get('/teams/create', [TeamController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+$router->post('/teams', [TeamController::class, 'store'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+$router->get('/teams/{id}/edit', [TeamController::class, 'edit'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+$router->post('/teams/{id}', [TeamController::class, 'update'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+$router->post('/teams/{id}/toggle-active', [TeamController::class, 'toggleActive'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
 

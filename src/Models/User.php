@@ -108,8 +108,8 @@ final class User
     {
         $pdo = Database::getInstance();
         $stmt = $pdo->prepare(
-            'INSERT INTO users (username, email, password_hash, full_name, role_id, is_active)
-             VALUES (:username, :email, :password_hash, :full_name, :role_id, :is_active)'
+            'INSERT INTO users (username, email, password_hash, full_name, role_id, team_id, is_active)
+             VALUES (:username, :email, :password_hash, :full_name, :role_id, :team_id, :is_active)'
         );
         $stmt->execute([
             'username'      => $data['username'],
@@ -117,6 +117,7 @@ final class User
             'password_hash' => $data['password_hash'],
             'full_name'     => $data['full_name'],
             'role_id'       => $data['role_id'],
+            'team_id'       => $data['team_id'] ?? null,
             'is_active'     => $data['is_active'] ?? 1,
         ]);
         return (int) $pdo->lastInsertId();
@@ -131,14 +132,15 @@ final class User
         )->fetchAll();
     }
 
-    /** All users (active + inactive) with role name, for the Users admin list. */
+    /** All users (active + inactive) with role/team name, for the Users admin list. */
     public static function allWithRole(): array
     {
         $pdo = Database::getInstance();
         return $pdo->query(
-            'SELECT u.*, r.name AS role_name
+            'SELECT u.*, r.name AS role_name, st.name AS team_name
              FROM users u
              JOIN roles r ON r.id = u.role_id
+             LEFT JOIN sales_teams st ON st.id = u.team_id
              ORDER BY u.full_name'
         )->fetchAll();
     }
@@ -173,12 +175,13 @@ final class User
     {
         $pdo = Database::getInstance();
         $stmt = $pdo->prepare(
-            'UPDATE users SET full_name = :full_name, email = :email, role_id = :role_id WHERE id = :id'
+            'UPDATE users SET full_name = :full_name, email = :email, role_id = :role_id, team_id = :team_id WHERE id = :id'
         );
         $stmt->execute([
             'full_name' => $data['full_name'],
             'email'     => $data['email'],
             'role_id'   => $data['role_id'],
+            'team_id'   => $data['team_id'] ?? null,
             'id'        => $id,
         ]);
     }

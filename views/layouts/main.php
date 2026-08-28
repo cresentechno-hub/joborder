@@ -28,6 +28,7 @@ $isActive = static fn (string $prefix): string =>
         <li><a href="/job-orders" class="<?= $isActive('/job-orders') ?>">Job Orders</a></li>
         <?php if (Auth::can('user.manage')): ?>
           <li><a href="/users" class="<?= $isActive('/users') ?>">Users</a></li>
+          <li><a href="/teams" class="<?= $isActive('/teams') ?>">Teams</a></li>
         <?php endif; ?>
         <?php if (Auth::can('role.manage')): ?>
           <li><a href="/roles" class="<?= $isActive('/roles') ?>">Roles</a></li>
