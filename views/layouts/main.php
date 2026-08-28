@@ -36,6 +36,9 @@ $isActive = static fn (string $prefix): string =>
         <?php if (Auth::can('settings.manage')): ?>
           <li><a href="/settings" class="<?= $isActive('/settings') ?>">Settings</a></li>
         <?php endif; ?>
+        <?php if (Auth::can('activity_log.view')): ?>
+          <li><a href="/activity-log" class="<?= $isActive('/activity-log') ?>">Activity Log</a></li>
+        <?php endif; ?>
         <li><a href="/help" class="<?= $isActive('/help') ?>">Help</a></li>
       </ul>
     </aside>

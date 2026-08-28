@@ -302,6 +302,7 @@ INSERT INTO `roles` (`name`, `description`) VALUES
 INSERT INTO `permissions` (`code`, `description`) VALUES
   ('job_order.view',         'View job orders'),
   ('job_order.view_all',     'View job orders from every sales team, not just your own'),
+  ('job_order.view_completed', 'View job orders that are Completed (stage 7) or Cancelled (stage 8)'),
   ('job_order.create',       'Create job orders (upload quotation/PO)'),
   ('job_order.edit',         'Edit job order details'),
   ('job_order.delete',       'Delete (soft-delete) job orders'),
@@ -309,7 +310,8 @@ INSERT INTO `permissions` (`code`, `description`) VALUES
   ('user.manage',            'Create/edit/deactivate system users'),
   ('role.manage',            'Manage roles and permissions'),
   ('settings.manage',        'Manage system settings'),
-  ('report.view',            'View dashboard statistics and reports');
+  ('report.view',            'View dashboard statistics and reports'),
+  ('activity_log.view',      'View the system activity/audit log');
 
 -- Role <-> Permission mapping
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)

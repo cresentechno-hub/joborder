@@ -17,11 +17,12 @@ final class DashboardController extends Controller
         // null = unrestricted (sees every team). 0 = restricted with no team
         // assigned yet (sees nothing) — never confused with "unrestricted".
         $teamId = Auth::can('job_order.view_all') ? null : (int) (Auth::user()['team_id'] ?? 0);
+        $hideCompleted = !Auth::can('job_order.view_completed');
 
         $this->view('dashboard/index', [
             'user'               => Auth::user(),
             'quotationsThisYear' => JobOrder::countThisYear($teamId),
-            'stageCounts'        => JobOrder::countByStage($teamId),
+            'stageCounts'        => JobOrder::countByStage($teamId, $hideCompleted),
             'stuckJobs'          => JobOrder::stuckJobs($alertDays, $teamId),
             'alertDays'          => $alertDays,
         ]);

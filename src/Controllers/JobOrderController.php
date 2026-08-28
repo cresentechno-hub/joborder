@@ -18,6 +18,8 @@ final class JobOrderController extends Controller
 {
     public function index(array $params = []): void
     {
+        $canViewCompleted = Auth::can('job_order.view_completed');
+
         $filters = [
             'q'        => trim((string) $this->input('q', '')),
             'stage_id' => (int) $this->input('stage_id', 0) ?: null,
@@ -27,17 +29,30 @@ final class JobOrderController extends Controller
             // nothing to show, never "unrestricted" by accident.
             $filters['team_id'] = (int) (Auth::user()['team_id'] ?? 0);
         }
+        if (!$canViewCompleted) {
+            $filters['hide_completed'] = true;
+        }
         $page = max(1, (int) $this->input('page', 1));
         $perPage = max(1, (int) setting('items_per_page', '20'));
 
         $result = JobOrder::paginate($filters, $page, $perPage);
+
+        // Don't offer "7 - Sales Completed" / "8 - Cancel PO" as filter
+        // options to a viewer who'd never get results back for them.
+        $stages = JobStage::allActive();
+        if (!$canViewCompleted) {
+            $stages = array_values(array_filter(
+                $stages,
+                static fn (array $s): bool => !in_array($s['stage_code'], ['7', '8'], true)
+            ));
+        }
 
         $this->view('job_orders/index', [
             'jobOrders' => $result['data'],
             'total'     => $result['total'],
             'page'      => $result['page'],
             'perPage'   => $result['per_page'],
-            'stages'    => JobStage::allActive(),
+            'stages'    => $stages,
             'filters'   => $filters,
         ]);
     }
@@ -117,6 +132,7 @@ final class JobOrderController extends Controller
             $this->notFound();
         }
         $this->assertTeamAccess($jobOrder);
+        $this->assertStageAccess($jobOrder);
 
         $this->view('job_orders/edit', [
             'jobOrder' => $jobOrder,
@@ -139,6 +155,7 @@ final class JobOrderController extends Controller
             $this->notFound();
         }
         $this->assertTeamAccess($jobOrder);
+        $this->assertStageAccess($jobOrder);
 
         $input = $_POST;
         $errors = $this->validate($input, $id);
@@ -206,6 +223,7 @@ final class JobOrderController extends Controller
             $this->notFound();
         }
         $this->assertTeamAccess($jobOrder);
+        $this->assertStageAccess($jobOrder);
 
         JobOrder::softDelete($id, (int) Auth::id());
         ActivityLog::record(Auth::id(), 'job_order.delete', 'job_order', $id);
@@ -268,6 +286,26 @@ final class JobOrderController extends Controller
         $myTeamId = Auth::user()['team_id'] ?? null;
 
         if ($myTeamId === null || $assigneeTeamId === null || (int) $assigneeTeamId !== (int) $myTeamId) {
+            $this->notFound();
+        }
+    }
+
+    /**
+     * Completed (stage 7) / Cancelled (stage 8) job orders are Admin-only.
+     * Same reasoning as assertTeamAccess: the list already filters these
+     * out, but direct access by ID must be blocked too, or the filter is
+     * cosmetic. Checked against the job order's CURRENT stage — a non-admin
+     * still may move a job order INTO stage 7/8 (see it disappear from their
+     * own view afterwards), they just can't view/edit/delete one already there.
+     */
+    private function assertStageAccess(array $jobOrder): void
+    {
+        if (Auth::can('job_order.view_completed')) {
+            return;
+        }
+
+        $stage = JobStage::findById((int) $jobOrder['stage_id']);
+        if ($stage && in_array($stage['stage_code'], ['7', '8'], true)) {
             $this->notFound();
         }
     }

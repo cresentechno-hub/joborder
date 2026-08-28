@@ -65,6 +65,12 @@
     <li>Full Payment Received &amp; Sales Completed</li>
     <li>Cancel PO <span style="color: var(--color-text-muted);">(use when the customer cancels the order)</span></li>
   </ol>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    Once a job order reaches <strong>Full Payment Received &amp; Sales Completed</strong> or <strong>Cancel PO</strong>,
+    it becomes Admin-only: it disappears from everyone else's list, dashboard, and stage counts (Sales/Manager/Viewer),
+    even for the sales team that handled it. Anyone with edit rights can still move a job order into one of these
+    stages - they just won't be able to see it there afterwards.
+  </p>
 </div>
 
 <div class="card" style="margin-top:20px;">
@@ -123,5 +129,13 @@
     System-wide options that apply immediately after saving - no redeploy needed. This includes the application
     name shown in the sidebar, the timezone used for all dates, the pending-stage alert threshold used on the
     Dashboard, and the upload size/type restrictions used by the Quotation and PO uploads.
+  </p>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">Activity Log <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(Admin only)</span></h3>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    A trace of who did what and when - logins/logouts and every create, update, delete, and permission change
+    across the system. Filter by action type or by user under <strong>Activity Log</strong>.
   </p>
 </div>

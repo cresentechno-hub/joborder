@@ -126,10 +126,12 @@ final class JobOrder
     }
 
     /**
-     * @param array{q?:string, stage_id?:int|null, team_id?:int|null} $filters
+     * @param array{q?:string, stage_id?:int|null, team_id?:int|null, hide_completed?:bool} $filters
      *   `team_id` restricts results to that team ONLY when the key is present
      *   (0 is valid — it means "restricted, and has no team, so sees nothing
      *   until assigned one"). Omit the key entirely for unrestricted access.
+     *   `hide_completed` excludes stage 7 (Sales Completed) and 8 (Cancel PO)
+     *   — set true for any viewer without job_order.view_completed.
      * @return array{data: array, total: int, page: int, per_page: int}
      */
     public static function paginate(array $filters, int $page, int $perPage): array
@@ -151,6 +153,10 @@ final class JobOrder
         if (array_key_exists('team_id', $filters)) {
             $where[] = 'assigned_to IN (SELECT id FROM users WHERE team_id = :team_id)';
             $params['team_id'] = $filters['team_id'];
+        }
+
+        if (!empty($filters['hide_completed'])) {
+            $where[] = "stage_code NOT IN ('7', '8')";
         }
 
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
@@ -203,9 +209,12 @@ final class JobOrder
 
     /**
      * Every active stage with its live job count (0 for empty stages), in
-     * workflow order. $teamId scopes counts to job orders assigned to that team.
+     * workflow order. $teamId scopes counts to job orders assigned to that
+     * team. $hideCompleted drops stage 7/8 rows entirely — set true for any
+     * viewer without job_order.view_completed, so the dashboard doesn't leak
+     * completed/cancelled counts to roles that can't see the records.
      */
-    public static function countByStage(?int $teamId = null): array
+    public static function countByStage(?int $teamId = null, bool $hideCompleted = false): array
     {
         $pdo = Database::getInstance();
         $teamJoin = '';
@@ -216,12 +225,14 @@ final class JobOrder
             $params['team_id'] = $teamId;
         }
 
+        $stageFilter = $hideCompleted ? " AND js.stage_code NOT IN ('7', '8')" : '';
+
         $stmt = $pdo->prepare(
             'SELECT js.id AS stage_id, js.stage_code, js.stage_name, js.color_code AS stage_color,
                     COUNT(jo.id) AS total
              FROM job_stages js
              LEFT JOIN job_orders jo ON jo.stage_id = js.id AND jo.is_deleted = 0' . $teamJoin . '
-             WHERE js.is_active = 1
+             WHERE js.is_active = 1' . $stageFilter . '
              GROUP BY js.id, js.stage_code, js.stage_name, js.color_code, js.sort_order
              ORDER BY js.sort_order'
         );

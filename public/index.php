@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/config/bootstrap.php';
 
+use App\Controllers\ActivityLogController;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\HelpController;
@@ -103,6 +104,11 @@ $router->get('/settings', [SettingsController::class, 'edit'], [
 ]);
 $router->post('/settings', [SettingsController::class, 'update'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'settings.manage'],
+]);
+
+// Activity Log
+$router->get('/activity-log', [ActivityLogController::class, 'index'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'activity_log.view'],
 ]);
 
 // Help
