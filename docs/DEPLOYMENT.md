@@ -5,7 +5,7 @@
 - MySQL 8.0+ (or MariaDB 10.6+)
 - Apache with `mod_rewrite` and `mod_headers` enabled
 - `poppler-utils` (for the `pdftotext` command) — powers the "Read Quotation & Auto-Fill" button on the New Job Order form. Install with `apt install poppler-utils` (Debian/Ubuntu) or `yum install poppler-utils` (RHEL/CentOS), then set `PDFTOTEXT_BINARY` in `config/config.php` to `'pdftotext'` (it'll be on the system PATH). Without this, the auto-fill button simply does nothing useful — manual entry still works fine.
-- Optional: a Claude API key to upgrade "Read Quotation & Auto-Fill" from pdftotext+regex to real extraction (also handles scanned/photographed quotations, not just clean PDFs). Copy `config/secrets.example.php` to `config/secrets.php` and fill in a real `ANTHROPIC_API_KEY` from https://console.anthropic.com/settings/keys. `config/secrets.php` is gitignored — never commit a real key. Without it, auto-fill silently falls back to the pdftotext-only path.
+- Optional: a Gemini API key to power "Read Quotation & Auto-Fill" and "Read Invoice & Auto-Fill" (layout-independent extraction that also handles scanned/photographed documents, not just clean PDFs). Copy `config/secrets.example.php` to `config/secrets.php` and fill in a real `GOOGLE_AI_API_KEY` from https://aistudio.google.com/apikey. `config/secrets.php` is gitignored — never commit a real key. Without it, quotation auto-fill falls back to the pdftotext-only path and invoice auto-fill falls back to a filename-derived guess.
 - Optional: SMTP credentials to enable outbound email (job order assignment notifications + the LPR/SMC renewal reminder digest). See **Email** below. Without it, both features silently no-op — nothing else in the app depends on email working.
 
 ## First-time setup
