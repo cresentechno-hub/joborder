@@ -7,7 +7,7 @@ namespace App\Services;
 use Throwable;
 
 /**
- * Claude-based extraction of the invoice number AND the customer's PO
+ * Gemini-based extraction of the invoice number AND the customer's PO
  * No./Ref No. from an uploaded invoice document (PDF or a photo/scan of
  * one) — backs the "Read Invoice & Auto-Fill" button on the Add Comment
  * form (views/job_orders/_add_comment.php) and the standalone Edit Comment
@@ -64,66 +64,60 @@ final class AiInvoiceExtractor
         }
 
         try {
-            $fields = self::extractViaClaude($filePath, $mediaType);
+            $fields = self::extractViaGemini($filePath, $mediaType);
             if ($fields !== null && ($fields['invoice_no'] !== null || $fields['po_no'] !== null)) {
                 return $fields;
             }
         } catch (Throwable $e) {
-            error_log('AiInvoiceExtractor: falling back after Claude extraction failed — ' . $e->getMessage());
+            error_log('AiInvoiceExtractor: falling back after Gemini extraction failed — ' . $e->getMessage());
         }
 
         return $fallback + ['note' => 'Could not confidently read the invoice — using the file name for Invoice No. Please check/correct both fields.'];
     }
 
-    /** null means "couldn't extract via Claude, let the caller fall back" @return array{invoice_no: ?string, po_no: ?string}|null */
-    private static function extractViaClaude(string $filePath, string $mediaType): ?array
+    /** null means "couldn't extract via Gemini, let the caller fall back" @return array{invoice_no: ?string, po_no: ?string}|null */
+    private static function extractViaGemini(string $filePath, string $mediaType): ?array
     {
         $data = file_get_contents($filePath);
         if ($data === false) {
             return null;
         }
 
-        $sourceBlock = $mediaType === 'application/pdf'
-            ? ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => $mediaType, 'data' => base64_encode($data)]]
-            : ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mediaType, 'data' => base64_encode($data)]];
-
-        $response = AnthropicClient::createMessage([
-            'model'      => ANTHROPIC_MODEL,
-            'max_tokens' => 256,
-            'system'     => self::SYSTEM_PROMPT,
-            'messages'   => [[
-                'role'    => 'user',
-                'content' => [
-                    $sourceBlock,
-                    ['type' => 'text', 'text' => 'Extract the invoice number and PO No. from this document.'],
+        $response = GoogleAiClient::generateContent([
+            'system_instruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
+            'contents' => [[
+                'role'  => 'user',
+                'parts' => [
+                    ['inline_data' => ['mime_type' => $mediaType, 'data' => base64_encode($data)]],
+                    ['text' => 'Extract the invoice number and PO No. from this document.'],
                 ],
             ]],
-            'tools' => [[
-                'name'         => self::TOOL_NAME,
-                'description'  => 'Records the extracted invoice number and PO No.',
-                'input_schema' => [
-                    'type'       => 'object',
+            'generationConfig' => [
+                'response_mime_type' => 'application/json',
+                // Gemini spends a chunk of this budget on internal
+                // "thinking" tokens before writing the JSON answer — too
+                // low a cap truncates the actual output mid-string.
+                'max_output_tokens'  => 1024,
+                'response_schema'    => [
+                    'type'       => 'OBJECT',
                     'properties' => [
-                        'invoice_no' => ['type' => ['string', 'null']],
-                        'po_no'      => ['type' => ['string', 'null']],
+                        'invoice_no' => ['type' => 'STRING', 'nullable' => true],
+                        'po_no'      => ['type' => 'STRING', 'nullable' => true],
                     ],
                     'required' => ['invoice_no', 'po_no'],
                 ],
-            ]],
-            'tool_choice' => ['type' => 'tool', 'name' => self::TOOL_NAME],
+            ],
         ]);
 
-        foreach ($response['content'] ?? [] as $block) {
-            if (($block['type'] ?? null) === 'tool_use' && ($block['name'] ?? null) === self::TOOL_NAME) {
-                $input = $block['input'] ?? [];
-                return [
-                    'invoice_no' => self::asStringOrNull($input['invoice_no'] ?? null),
-                    'po_no'      => self::asStringOrNull($input['po_no'] ?? null),
-                ];
-            }
+        $fields = GoogleAiClient::decodeJsonResponse($response);
+        if ($fields === null) {
+            return null;
         }
 
-        return null;
+        return [
+            'invoice_no' => self::asStringOrNull($fields['invoice_no'] ?? null),
+            'po_no'      => self::asStringOrNull($fields['po_no'] ?? null),
+        ];
     }
 
     private static function asStringOrNull(mixed $value): ?string

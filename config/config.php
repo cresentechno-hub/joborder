@@ -33,12 +33,21 @@ define('STAGE_PENDING_ALERT_DAYS', 7);
 // 'pdftotext' since it lands on the system PATH.
 define('PDFTOTEXT_BINARY', 'C:\\laragon\\bin\\git\\mingw64\\bin\\pdftotext.exe');
 
-// Claude-based quotation extraction (src/Services/AiQuotationExtractor.php)
-// — copy config/secrets.example.php to config/secrets.php and fill in a real
-// ANTHROPIC_API_KEY to enable it. Without a key, auto-fill silently falls
-// back to the pdftotext-only path (src/Services/QuotationExtractor.php).
+// Claude-based quotation extraction (src/Services/AnthropicClient.php) —
+// currently unused (the extractors call Gemini below instead), left
+// configured in case of a future switch back.
 define('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001');
 define('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1/messages');
+
+// Gemini-based quotation/invoice extraction (src/Services/GoogleAiClient.php,
+// AiQuotationExtractor.php, AiInvoiceExtractor.php) — copy
+// config/secrets.example.php to config/secrets.php and fill in a real
+// GOOGLE_AI_API_KEY (from https://aistudio.google.com/apikey) to enable it.
+// Without a key, quotation auto-fill falls back to the pdftotext-only path
+// (src/Services/QuotationExtractor.php); invoice auto-fill falls back to a
+// filename-derived guess.
+define('GOOGLE_AI_MODEL', 'gemini-3.6-flash');
+define('GOOGLE_AI_API_URL', 'https://generativelanguage.googleapis.com/v1beta');
 
 // Outbound email (src/Services/Mailer.php) — job order assignment
 // notifications + the LPR/SMC renewal reminder cron script. Host/port/etc.
@@ -58,6 +67,9 @@ if (file_exists(__DIR__ . '/secrets.php')) {
 // leave SMTP_USERNAME/SMTP_PASSWORD undefined and fatal the app.
 if (!defined('ANTHROPIC_API_KEY')) {
     define('ANTHROPIC_API_KEY', '');
+}
+if (!defined('GOOGLE_AI_API_KEY')) {
+    define('GOOGLE_AI_API_KEY', '');
 }
 if (!defined('SMTP_USERNAME')) {
     define('SMTP_USERNAME', '');

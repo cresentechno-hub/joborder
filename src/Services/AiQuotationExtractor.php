@@ -7,7 +7,7 @@ namespace App\Services;
 use Throwable;
 
 /**
- * Claude-based replacement for QuotationExtractor's pdftotext+regex
+ * Gemini-based replacement for QuotationExtractor's pdftotext+regex
  * approach — layout-independent, and (unlike QuotationExtractor) also
  * handles scanned/photographed quotations, not just text PDFs. Same
  * best-effort contract: never throws out to the caller, any field it can't
@@ -63,12 +63,12 @@ final class AiQuotationExtractor
         }
 
         try {
-            $result = self::extractViaClaude($filePath, $mediaType);
+            $result = self::extractViaGemini($filePath, $mediaType);
             if ($result !== null) {
                 return $result;
             }
         } catch (Throwable $e) {
-            error_log('AiQuotationExtractor: falling back after Claude extraction failed — ' . $e->getMessage());
+            error_log('AiQuotationExtractor: falling back after Gemini extraction failed — ' . $e->getMessage());
         }
 
         // Fallback: pdftotext+regex only understands PDFs; for images there's
@@ -81,58 +81,52 @@ final class AiQuotationExtractor
     }
 
     /** @return array{quotation_no: ?string, customer_name: ?string, subject: ?string, total_cost: ?float}|null null means "couldn't extract, let the caller fall back" */
-    private static function extractViaClaude(string $filePath, string $mediaType): ?array
+    private static function extractViaGemini(string $filePath, string $mediaType): ?array
     {
         $data = file_get_contents($filePath);
         if ($data === false) {
             return null;
         }
 
-        $sourceBlock = $mediaType === 'application/pdf'
-            ? ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => $mediaType, 'data' => base64_encode($data)]]
-            : ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mediaType, 'data' => base64_encode($data)]];
-
-        $response = AnthropicClient::createMessage([
-            'model'      => ANTHROPIC_MODEL,
-            'max_tokens' => 1024,
-            'system'     => self::SYSTEM_PROMPT,
-            'messages'   => [[
-                'role'    => 'user',
-                'content' => [
-                    $sourceBlock,
-                    ['type' => 'text', 'text' => 'Extract the quotation details from this document.'],
+        $response = GoogleAiClient::generateContent([
+            'system_instruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
+            'contents' => [[
+                'role'  => 'user',
+                'parts' => [
+                    ['inline_data' => ['mime_type' => $mediaType, 'data' => base64_encode($data)]],
+                    ['text' => 'Extract the quotation details from this document.'],
                 ],
             ]],
-            'tools' => [[
-                'name'         => self::TOOL_NAME,
-                'description'  => 'Records the extracted quotation fields.',
-                'input_schema' => [
-                    'type'       => 'object',
+            'generationConfig' => [
+                'response_mime_type' => 'application/json',
+                // Gemini spends a chunk of this budget on internal
+                // "thinking" tokens before writing the JSON answer — too
+                // low a cap truncates the actual output mid-string.
+                'max_output_tokens'  => 2048,
+                'response_schema'    => [
+                    'type'       => 'OBJECT',
                     'properties' => [
-                        'quotation_no'  => ['type' => ['string', 'null']],
-                        'customer_name' => ['type' => ['string', 'null']],
-                        'subject'       => ['type' => ['string', 'null']],
-                        'total_cost'    => ['type' => ['number', 'null']],
+                        'quotation_no'  => ['type' => 'STRING', 'nullable' => true],
+                        'customer_name' => ['type' => 'STRING', 'nullable' => true],
+                        'subject'       => ['type' => 'STRING', 'nullable' => true],
+                        'total_cost'    => ['type' => 'NUMBER', 'nullable' => true],
                     ],
                     'required' => ['quotation_no', 'customer_name', 'subject', 'total_cost'],
                 ],
-            ]],
-            'tool_choice' => ['type' => 'tool', 'name' => self::TOOL_NAME],
+            ],
         ]);
 
-        foreach ($response['content'] ?? [] as $block) {
-            if (($block['type'] ?? null) === 'tool_use' && ($block['name'] ?? null) === self::TOOL_NAME) {
-                $input = $block['input'] ?? [];
-                return [
-                    'quotation_no'  => self::asStringOrNull($input['quotation_no'] ?? null),
-                    'customer_name' => self::asStringOrNull($input['customer_name'] ?? null),
-                    'subject'       => self::asStringOrNull($input['subject'] ?? null),
-                    'total_cost'    => is_numeric($input['total_cost'] ?? null) ? (float) $input['total_cost'] : null,
-                ];
-            }
+        $fields = GoogleAiClient::decodeJsonResponse($response);
+        if ($fields === null) {
+            return null;
         }
 
-        return null;
+        return [
+            'quotation_no'  => self::asStringOrNull($fields['quotation_no'] ?? null),
+            'customer_name' => self::asStringOrNull($fields['customer_name'] ?? null),
+            'subject'       => self::asStringOrNull($fields['subject'] ?? null),
+            'total_cost'    => is_numeric($fields['total_cost'] ?? null) ? (float) $fields['total_cost'] : null,
+        ];
     }
 
     private static function asStringOrNull(mixed $value): ?string
