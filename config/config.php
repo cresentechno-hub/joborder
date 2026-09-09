@@ -46,7 +46,11 @@ define('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1/messages');
 // Without a key, quotation auto-fill falls back to the pdftotext-only path
 // (src/Services/QuotationExtractor.php); invoice auto-fill falls back to a
 // filename-derived guess.
-define('GOOGLE_AI_MODEL', 'gemini-3.6-flash');
+// Using the "lite" tier deliberately: it sits on its own, separate free-tier
+// quota from the full flash models (gemini-3.6-flash's free quota is a very
+// tight 20 requests/day — the lite tier has proven far more usable for this
+// kind of simple field extraction without paying for it).
+define('GOOGLE_AI_MODEL', 'gemini-3.5-flash-lite');
 define('GOOGLE_AI_API_URL', 'https://generativelanguage.googleapis.com/v1beta');
 
 // Outbound email (src/Services/Mailer.php) — job order assignment
