@@ -1,4 +1,4 @@
-<?php $success = flash('success'); $showBranchColumn = \App\Core\Auth::can('data.view_branch_column'); ?>
+<?php $success = flash('success'); ?>
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
   <h2 style="margin:0;">Job Orders</h2>
@@ -41,13 +41,12 @@
         <th><?= sortable_th('/job-orders', 'job_start_date', 'Start Date', $filters) ?></th>
         <th style="text-align:center;">Days</th>
         <th><?= sortable_th('/job-orders', 'assignee_names', 'Assigned To', $filters) ?></th>
-        <?php if ($showBranchColumn): ?><th><?= sortable_th('/job-orders', 'branch_name', 'Branch', $filters) ?></th><?php endif; ?>
         <th><?= sortable_th('/job-orders', 'stage_name', 'Stage', $filters) ?></th>
       </tr>
     </thead>
     <tbody>
       <?php if (empty($jobOrders)): ?>
-        <tr><td colspan="9" style="padding:24px; text-align:center; color:var(--color-text-muted);">No job orders found.</td></tr>
+        <tr><td colspan="8" style="padding:24px; text-align:center; color:var(--color-text-muted);">No job orders found.</td></tr>
       <?php endif; ?>
       <?php foreach ($jobOrders as $jo): ?>
         <tr>
@@ -73,9 +72,6 @@
           <td><?= e(format_date($jo['job_start_date'])) ?></td>
           <td style="text-align:center;"><?= (int) $jo['days_elapsed'] ?></td>
           <td><?= e($jo['assignee_names'] ?: $jo['assigned_to_name']) ?></td>
-          <?php if ($showBranchColumn): ?>
-            <td><?= e($jo['branch_name']) ?></td>
-          <?php endif; ?>
           <td>
             <span class="badge" style="background:<?= e($jo['stage_color'] ?: '#64748B') ?>;">
               <?= e($jo['stage_code']) ?> - <?= e($jo['stage_name']) ?>

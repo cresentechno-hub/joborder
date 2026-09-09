@@ -46,7 +46,6 @@ final class SmcController extends Controller
             'currentYm'          => date('Y-m'),
             'canManage'          => Auth::can('smc.manage'),
             'canSelectBranch'    => Auth::can('data.view_all_branches'),
-            'showBranchColumn'   => Auth::can('data.view_branch_column'),
             'customers'          => Customer::allActive(),
             'branches'           => Branch::allActive(),
             'selectedCustomerId' => $customerId,

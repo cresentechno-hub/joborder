@@ -44,7 +44,7 @@
 <?php else: ?>
   <div class="card" style="padding:0;">
     <div class="lpr-grid-wrap" id="smc-grid-wrap">
-      <table class="lpr-grid <?= $showBranchColumn ? 'has-branch-col' : '' ?>">
+      <table class="lpr-grid">
         <thead>
           <tr>
             <th class="sticky-col col-actions"></th>
@@ -52,7 +52,6 @@
             <th class="sticky-col col-start">Start Date</th>
             <th class="sticky-col col-coverage">Coverage</th>
             <th class="sticky-col col-email">Customer Email</th>
-            <?php if ($showBranchColumn): ?><th class="sticky-col col-branch">Branch</th><?php endif; ?>
             <?php foreach ($months as $ym): ?>
               <th class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>"><?= e(lpr_month_label($ym)) ?></th>
             <?php endforeach; ?>
@@ -81,7 +80,6 @@
               <td class="sticky-col col-start"><?= e(format_date($c['start_date'])) ?></td>
               <td class="sticky-col col-coverage"><?= (int) $c['coverage_months'] ?>mo</td>
               <td class="sticky-col col-email"><?= e($c['customer_email'] ?? '') ?></td>
-              <?php if ($showBranchColumn): ?><td class="sticky-col col-branch"><?= e($c['branch_name']) ?></td><?php endif; ?>
               <?php foreach ($months as $ym): ?>
                 <td class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>">
                   <?php if (in_array($ym, $c['covered_months'], true)): ?>

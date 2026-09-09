@@ -44,7 +44,7 @@
 <?php else: ?>
   <div class="card" style="padding:0;">
     <div class="lpr-grid-wrap" id="lpr-grid-wrap">
-      <table class="lpr-grid <?= $showBranchColumn ? 'has-branch-col' : '' ?>">
+      <table class="lpr-grid">
         <thead>
           <tr>
             <th class="sticky-col col-actions"></th>
@@ -52,7 +52,6 @@
             <th class="sticky-col col-start">Start Date</th>
             <th class="sticky-col col-coverage">Coverage</th>
             <th class="sticky-col col-email">Customer Email</th>
-            <?php if ($showBranchColumn): ?><th class="sticky-col col-branch">Branch</th><?php endif; ?>
             <?php foreach ($months as $ym): ?>
               <th class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>"><?= e(lpr_month_label($ym)) ?></th>
             <?php endforeach; ?>
@@ -61,7 +60,7 @@
         <tbody>
           <?php foreach ($groups as $partnerName => $rentalsInGroup): ?>
             <tr class="group-header-row">
-              <td class="sticky-col col-actions" colspan="<?= $showBranchColumn ? 6 : 5 ?>">Partner: <?= e($partnerName) ?></td>
+              <td class="sticky-col col-actions" colspan="5">Partner: <?= e($partnerName) ?></td>
               <?php foreach ($months as $ym): ?><td class="<?= $ym === $currentYm ? 'current-month' : '' ?>"></td><?php endforeach; ?>
             </tr>
             <?php foreach ($rentalsInGroup as $r): ?>
@@ -82,7 +81,6 @@
                 <td class="sticky-col col-start"><?= e(format_date($r['start_date'])) ?></td>
                 <td class="sticky-col col-coverage"><?= (int) $r['coverage_months'] ?>mo</td>
                 <td class="sticky-col col-email"><?= e($r['customer_email'] ?? '') ?></td>
-                <?php if ($showBranchColumn): ?><td class="sticky-col col-branch"><?= e($r['branch_name']) ?></td><?php endif; ?>
                 <?php foreach ($months as $ym): ?>
                   <td class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>">
                     <?php if (in_array($ym, $r['covered_months'], true)): ?>
