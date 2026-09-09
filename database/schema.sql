@@ -3,10 +3,14 @@
 -- Engine: MySQL 8.0+  |  Charset: utf8mb4  |  Collation: utf8mb4_unicode_ci
 -- =====================================================================
 
-CREATE DATABASE IF NOT EXISTS `job_order_system`
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE `job_order_system`;
+-- No CREATE DATABASE / USE here on purpose: on shared hosting (cPanel etc.)
+-- the database already exists under a host-assigned name (e.g. the account
+-- prefixes it, like `cpaneluser_job_order_system`) and the DB user typically
+-- has no privilege to CREATE/USE a differently-named database — that fails
+-- with "Access denied" even though the intended target database is already
+-- selected in phpMyAdmin. Create the database first (via cPanel's MySQL
+-- Databases page, or `CREATE DATABASE` locally), select it, then import
+-- this file against it directly.
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
