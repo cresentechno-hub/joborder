@@ -87,7 +87,10 @@ function verify_csrf(): bool
 
 function asset(string $path): string
 {
-    return '/assets/' . ltrim($path, '/');
+    $rel = ltrim($path, '/');
+    $full = __DIR__ . '/../../public/assets/' . $rel;
+    $v = is_file($full) ? filemtime($full) : time();
+    return '/assets/' . $rel . '?v=' . $v;
 }
 
 function format_money(float $amount): string
@@ -109,6 +112,57 @@ function format_date(?string $ymd): string
     }
     $date = DateTime::createFromFormat('Y-m-d', $ymd);
     return $date ? $date->format(setting('date_format', 'd-m-Y')) : $ymd;
+}
+
+/** Formats a 'YYYY-MM' string as a short label, e.g. '2026-01' -> 'Jan 2026'. */
+function lpr_month_label(string $yearMonth): string
+{
+    $date = DateTime::createFromFormat('Y-m-d', $yearMonth . '-01');
+    return $date ? $date->format('M Y') : $yearMonth;
+}
+
+/** Turns a quotation no (which may contain '/', e.g. "Q23619/2026") into a safe folder name. */
+function job_order_folder_name(string $quotationNo): string
+{
+    $clean = preg_replace('/[\/\\\\:*?"<>|]/', '-', trim($quotationNo)) ?? $quotationNo;
+    $clean = trim($clean, ' .-');
+    return $clean !== '' ? $clean : 'unknown';
+}
+
+/** Absolute path to a job order's per-category upload folder (created on demand by FileUploadService::upload()). */
+function job_order_upload_dir(string $quotationNo, string $category): string
+{
+    return UPLOAD_BASE_DIR . '/' . job_order_folder_name($quotationNo) . '/' . $category;
+}
+
+/** Same as job_order_upload_dir(), but the /public-relative path used to build browser-facing links. */
+function job_order_upload_rel(string $quotationNo, string $category): string
+{
+    return UPLOAD_BASE_REL . '/' . job_order_folder_name($quotationNo) . '/' . $category;
+}
+
+/**
+ * Renders a sortable column header link for a paginated table: clicking it
+ * sets sort=$column (toggling dir=asc/desc on repeat clicks of the same
+ * column) while preserving every other filter already in $currentQuery,
+ * and resetting to page 1 since the result order changed.
+ */
+function sortable_th(string $baseUrl, string $column, string $label, array $currentQuery): string
+{
+    $currentSort = (string) ($currentQuery['sort'] ?? '');
+    $currentDir = (string) ($currentQuery['dir'] ?? 'asc');
+    $newDir = ($currentSort === $column && $currentDir === 'asc') ? 'desc' : 'asc';
+
+    $qs = array_merge($currentQuery, ['sort' => $column, 'dir' => $newDir, 'page' => 1]);
+    $qs = array_filter($qs, static fn ($v): bool => $v !== null && $v !== '');
+    $url = $baseUrl . '?' . http_build_query($qs);
+
+    $arrow = '';
+    if ($currentSort === $column) {
+        $arrow = ' <span class="sort-arrow">' . ($currentDir === 'asc' ? '&#9650;' : '&#9660;') . '</span>';
+    }
+
+    return '<a href="' . e($url) . '" class="sort-link">' . e($label) . $arrow . '</a>';
 }
 
 /** The <input accept> attribute value derived from the allowed_upload_types setting. */

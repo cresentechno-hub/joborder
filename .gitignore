@@ -1,12 +1,10 @@
-# Uploaded quotation/PO/invoice/DO files are runtime data, not source — keep the folders (via .htaccess) but not their contents
-/public/uploads/quotations/*
-!/public/uploads/quotations/.htaccess
-/public/uploads/po/*
-!/public/uploads/po/.htaccess
-/public/uploads/invoices/*
-!/public/uploads/invoices/.htaccess
-/public/uploads/do/*
-!/public/uploads/do/.htaccess
+# Uploaded quotation/PO/invoice/DO/other files are runtime data, not source.
+# Each job order gets its own per-quotation-no folder created on demand by
+# FileUploadService (uploads/{quotation_no}/{quotation,po,invoices,do,other}/)
+# — nothing under here needs to be tracked except the top-level .htaccess
+# that blocks PHP execution across the whole tree.
+/public/uploads/*
+!/public/uploads/.htaccess
 
 # Application logs
 /storage/logs/*.log
@@ -14,3 +12,6 @@
 # OS/editor cruft
 Thumbs.db
 .DS_Store
+
+# API keys — copy config/secrets.example.php to config/secrets.php and fill in real values there
+/config/secrets.php

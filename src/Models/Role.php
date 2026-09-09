@@ -24,6 +24,22 @@ final class Role
         return $row ?: null;
     }
 
+    public static function nameExists(string $name): bool
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM roles WHERE name = :name');
+        $stmt->execute(['name' => $name]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public static function create(string $name, ?string $description): int
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('INSERT INTO roles (name, description) VALUES (:name, :description)');
+        $stmt->execute(['name' => $name, 'description' => $description]);
+        return (int) $pdo->lastInsertId();
+    }
+
     /** Role rows plus a flat permissions[] code array for each, for the Roles list. */
     public static function allWithPermissions(): array
     {

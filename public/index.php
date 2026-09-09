@@ -6,13 +6,19 @@ require dirname(__DIR__) . '/config/bootstrap.php';
 
 use App\Controllers\ActivityLogController;
 use App\Controllers\AuthController;
+use App\Controllers\BranchController;
+use App\Controllers\CustomerController;
 use App\Controllers\DashboardController;
 use App\Controllers\HelpController;
 use App\Controllers\JobOrderCommentController;
 use App\Controllers\JobOrderController;
+use App\Controllers\LprPartnerController;
+use App\Controllers\LprRentalController;
+use App\Controllers\LprRenewalRecipientsController;
+use App\Controllers\NotificationController;
 use App\Controllers\RoleController;
 use App\Controllers\SettingsController;
-use App\Controllers\TeamController;
+use App\Controllers\SmcController;
 use App\Controllers\UserController;
 use App\Core\Router;
 use App\Middleware\AuthMiddleware;
@@ -64,6 +70,9 @@ $router->post('/job-orders/{id}/comments/{commentId}', [JobOrderCommentControlle
 $router->post('/job-orders/{id}/comments/{commentId}/delete', [JobOrderCommentController::class, 'destroy'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
 ]);
+$router->post('/job-orders/{id}/documents/{documentId}/delete', [JobOrderController::class, 'destroyDocument'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
+]);
 
 // Users
 $router->get('/users', [UserController::class, 'index'], [
@@ -85,28 +94,140 @@ $router->post('/users/{id}/toggle-active', [UserController::class, 'toggleActive
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
 
-// Sales Teams
-$router->get('/teams', [TeamController::class, 'index'], [
+// Branches
+$router->get('/branches', [BranchController::class, 'index'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
-$router->get('/teams/create', [TeamController::class, 'create'], [
+$router->get('/branches/create', [BranchController::class, 'create'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
-$router->post('/teams', [TeamController::class, 'store'], [
+$router->post('/branches', [BranchController::class, 'store'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
-$router->get('/teams/{id}/edit', [TeamController::class, 'edit'], [
+$router->get('/branches/{id}/edit', [BranchController::class, 'edit'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
-$router->post('/teams/{id}', [TeamController::class, 'update'], [
+$router->post('/branches/{id}', [BranchController::class, 'update'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
-$router->post('/teams/{id}/toggle-active', [TeamController::class, 'toggleActive'], [
+$router->post('/branches/{id}/toggle-active', [BranchController::class, 'toggleActive'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+
+// Customers (shared master list)
+$router->get('/customers', [CustomerController::class, 'index'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->get('/customers/create', [CustomerController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->post('/customers', [CustomerController::class, 'store'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->get('/customers/{id}/edit', [CustomerController::class, 'edit'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->post('/customers/{id}', [CustomerController::class, 'update'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->post('/customers/{id}/toggle-active', [CustomerController::class, 'toggleActive'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+
+// LPR Partners
+$router->get('/lpr-partners', [LprPartnerController::class, 'index'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->get('/lpr-partners/create', [LprPartnerController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->post('/lpr-partners', [LprPartnerController::class, 'store'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->get('/lpr-partners/{id}/edit', [LprPartnerController::class, 'edit'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->post('/lpr-partners/{id}', [LprPartnerController::class, 'update'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->post('/lpr-partners/{id}/toggle-active', [LprPartnerController::class, 'toggleActive'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+
+// LPR Rental (invoice-printing tracker) — literal routes (create/export/import)
+// registered before the {id} patterns, same reasoning as Job Orders above.
+$router->get('/lpr-rentals', [LprRentalController::class, 'index'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.view'],
+]);
+$router->get('/lpr-rentals/create', [LprRentalController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+$router->get('/lpr-rentals/export', [LprRentalController::class, 'exportCsv'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.view'],
+]);
+$router->get('/lpr-rentals/import', [LprRentalController::class, 'importForm'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+$router->post('/lpr-rentals/import', [LprRentalController::class, 'import'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+$router->post('/lpr-rentals', [LprRentalController::class, 'store'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+$router->get('/lpr-rentals/{id}/edit', [LprRentalController::class, 'edit'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+$router->post('/lpr-rentals/{id}', [LprRentalController::class, 'update'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+$router->post('/lpr-rentals/{id}/delete', [LprRentalController::class, 'destroy'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+$router->post('/lpr-rentals/{id}/checks/{yearMonth}/toggle', [LprRentalController::class, 'toggleCheck'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_rental.manage'],
+]);
+
+// SMC — literal routes (create/export/import) registered before the
+// {id} patterns, same reasoning as Job Orders / LPR Rental above.
+$router->get('/smc', [SmcController::class, 'index'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.view'],
+]);
+$router->get('/smc/create', [SmcController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
+]);
+$router->get('/smc/export', [SmcController::class, 'exportCsv'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.view'],
+]);
+$router->get('/smc/import', [SmcController::class, 'importForm'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
+]);
+$router->post('/smc/import', [SmcController::class, 'import'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
+]);
+$router->post('/smc', [SmcController::class, 'store'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
+]);
+$router->get('/smc/{id}/edit', [SmcController::class, 'edit'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
+]);
+$router->post('/smc/{id}', [SmcController::class, 'update'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
+]);
+$router->post('/smc/{id}/delete', [SmcController::class, 'destroy'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
+]);
+$router->post('/smc/{id}/status/{yearMonth}', [SmcController::class, 'updateStatus'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'smc.manage'],
 ]);
 
 // Roles (RBAC)
 $router->get('/roles', [RoleController::class, 'index'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'role.manage'],
+]);
+$router->get('/roles/create', [RoleController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'role.manage'],
+]);
+$router->post('/roles', [RoleController::class, 'store'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'role.manage'],
 ]);
 $router->get('/roles/{id}/permissions', [RoleController::class, 'editPermissions'], [
@@ -122,6 +243,20 @@ $router->get('/settings', [SettingsController::class, 'edit'], [
 ]);
 $router->post('/settings', [SettingsController::class, 'update'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'settings.manage'],
+]);
+$router->get('/settings/lpr-renewal-recipients', [LprRenewalRecipientsController::class, 'edit'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'settings.manage'],
+]);
+$router->post('/settings/lpr-renewal-recipients', [LprRenewalRecipientsController::class, 'update'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'settings.manage'],
+]);
+
+// Notifications (any logged-in user manages their own)
+$router->get('/notifications/{id}/open', [NotificationController::class, 'open'], [
+    [AuthMiddleware::class, null],
+]);
+$router->post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'], [
+    [AuthMiddleware::class, null],
 ]);
 
 // Activity Log

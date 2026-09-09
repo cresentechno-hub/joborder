@@ -16,15 +16,12 @@ define('APP_URL', 'http://job-order-system');
 
 define('UPLOAD_MAX_SIZE_MB', 10);
 define('UPLOAD_ALLOWED_TYPES', ['pdf', 'jpg', 'jpeg', 'png']);
-define('UPLOAD_QUOTATION_DIR', ROOT_PATH . '/public/uploads/quotations');
-define('UPLOAD_PO_DIR', ROOT_PATH . '/public/uploads/po');
-define('UPLOAD_INVOICE_DIR', ROOT_PATH . '/public/uploads/invoices');
-define('UPLOAD_DO_DIR', ROOT_PATH . '/public/uploads/do');
+// Every job order gets its own folder here, named after its quotation no
+// (e.g. uploads/QF0106-2026/{quotation,po,invoices,do,other}/...) — see
+// job_order_upload_dir()/job_order_upload_rel() in Helpers/helpers.php.
+define('UPLOAD_BASE_DIR', ROOT_PATH . '/public/uploads');
 // Relative to /public — used to build browser-facing links to uploaded files
-define('UPLOAD_QUOTATION_REL', 'uploads/quotations');
-define('UPLOAD_PO_REL', 'uploads/po');
-define('UPLOAD_INVOICE_REL', 'uploads/invoices');
-define('UPLOAD_DO_REL', 'uploads/do');
+define('UPLOAD_BASE_REL', 'uploads');
 
 define('STAGE_PENDING_ALERT_DAYS', 7);
 
@@ -35,6 +32,39 @@ define('STAGE_PENDING_ALERT_DAYS', 7);
 // or `yum install poppler-utils` (RHEL/CentOS), then this can just be
 // 'pdftotext' since it lands on the system PATH.
 define('PDFTOTEXT_BINARY', 'C:\\laragon\\bin\\git\\mingw64\\bin\\pdftotext.exe');
+
+// Claude-based quotation extraction (src/Services/AiQuotationExtractor.php)
+// — copy config/secrets.example.php to config/secrets.php and fill in a real
+// ANTHROPIC_API_KEY to enable it. Without a key, auto-fill silently falls
+// back to the pdftotext-only path (src/Services/QuotationExtractor.php).
+define('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001');
+define('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1/messages');
+
+// Outbound email (src/Services/Mailer.php) — job order assignment
+// notifications + the LPR/SMC renewal reminder cron script. Host/port/etc.
+// aren't sensitive; the username/password are, so those two live in
+// secrets.php only (see below).
+define('SMTP_HOST', 'mail.cresentech.com.my');
+define('SMTP_PORT', 465);
+define('SMTP_ENCRYPTION', 'ssl'); // 'tls' or 'ssl' — cPanel's "Secure SSL/TLS (Recommended)" preset uses SSL on 465
+define('SMTP_FROM_EMAIL', 'noreply@cresentech.com.my');
+define('SMTP_FROM_NAME', 'Job Order Management System');
+
+if (file_exists(__DIR__ . '/secrets.php')) {
+    require __DIR__ . '/secrets.php';
+}
+// Each secret defaults independently — an older secrets.php that only
+// defines ANTHROPIC_API_KEY (from before email support was added) shouldn't
+// leave SMTP_USERNAME/SMTP_PASSWORD undefined and fatal the app.
+if (!defined('ANTHROPIC_API_KEY')) {
+    define('ANTHROPIC_API_KEY', '');
+}
+if (!defined('SMTP_USERNAME')) {
+    define('SMTP_USERNAME', '');
+}
+if (!defined('SMTP_PASSWORD')) {
+    define('SMTP_PASSWORD', '');
+}
 
 if (APP_DEBUG) {
     error_reporting(E_ALL);

@@ -1,4 +1,4 @@
-<?php $success = flash('success'); $showTeamColumn = \App\Core\Auth::can('job_order.view_all'); ?>
+<?php $success = flash('success'); $showBranchColumn = \App\Core\Auth::can('data.view_branch_column'); ?>
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
   <h2 style="margin:0;">Job Orders</h2>
@@ -12,6 +12,12 @@
 <form method="GET" action="/job-orders" style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
   <input class="form-control" style="flex:1; min-width:220px;" type="text" name="q"
          value="<?= e($filters['q']) ?>" placeholder="Search quotation no, customer, subject...">
+  <select class="form-control" name="customer_name" style="max-width:280px;">
+    <option value="">All Customers</option>
+    <?php foreach ($customerNames as $cn): ?>
+      <option value="<?= e($cn) ?>" <?= ($filters['customer_name'] ?? '') === $cn ? 'selected' : '' ?>><?= e($cn) ?></option>
+    <?php endforeach; ?>
+  </select>
   <select class="form-control" name="stage_id" style="max-width:280px;">
     <option value="">All Stages</option>
     <?php foreach ($stages as $s): ?>
@@ -28,15 +34,15 @@
     <thead>
       <tr>
         <th></th>
-        <th>Quotation No</th>
-        <th>Customer</th>
-        <th>Subject</th>
-        <th style="text-align:right;">Total Cost (RM)</th>
-        <th>Start Date</th>
+        <th><?= sortable_th('/job-orders', 'quotation_no', 'Quotation No', $filters) ?></th>
+        <th><?= sortable_th('/job-orders', 'customer_name', 'Customer', $filters) ?></th>
+        <th><?= sortable_th('/job-orders', 'subject', 'Subject', $filters) ?></th>
+        <th style="text-align:right;"><?= sortable_th('/job-orders', 'total_cost', 'Total Cost (RM)', $filters) ?></th>
+        <th><?= sortable_th('/job-orders', 'job_start_date', 'Start Date', $filters) ?></th>
         <th style="text-align:center;">Days</th>
-        <th>Assigned To</th>
-        <?php if ($showTeamColumn): ?><th>Team</th><?php endif; ?>
-        <th>Stage</th>
+        <th><?= sortable_th('/job-orders', 'assignee_names', 'Assigned To', $filters) ?></th>
+        <?php if ($showBranchColumn): ?><th><?= sortable_th('/job-orders', 'branch_name', 'Branch', $filters) ?></th><?php endif; ?>
+        <th><?= sortable_th('/job-orders', 'stage_name', 'Stage', $filters) ?></th>
       </tr>
     </thead>
     <tbody>
@@ -62,9 +68,9 @@
           <td style="text-align:right;"><?= format_money((float) $jo['total_cost']) ?></td>
           <td><?= e(format_date($jo['job_start_date'])) ?></td>
           <td style="text-align:center;"><?= (int) $jo['days_elapsed'] ?></td>
-          <td><?= e($jo['assigned_to_name']) ?></td>
-          <?php if ($showTeamColumn): ?>
-            <td><?= $jo['assigned_to_team_name'] ? e($jo['assigned_to_team_name']) : '<span style="color:var(--color-text-muted);">—</span>' ?></td>
+          <td><?= e($jo['assignee_names'] ?: $jo['assigned_to_name']) ?></td>
+          <?php if ($showBranchColumn): ?>
+            <td><?= e($jo['branch_name']) ?></td>
           <?php endif; ?>
           <td>
             <span class="badge" style="background:<?= e($jo['stage_color'] ?: '#64748B') ?>;">

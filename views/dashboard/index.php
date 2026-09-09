@@ -64,3 +64,37 @@ $maxStageCount = $stageTotals ? max(1, ...$stageTotals) : 1;
     <?php endif; ?>
   </div>
 </div>
+
+<?php if (!empty($renewals) || \App\Core\Auth::can('lpr_rental.view') || \App\Core\Auth::can('smc.view')): ?>
+<div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">Contract Renewals <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(LPR &amp; SMC, within <?= (int) $renewalMonths ?> months)</span></h3>
+  <?php if (empty($renewals)): ?>
+    <p style="color: var(--color-text-muted); font-size:13px;">Nothing coming up for renewal.</p>
+  <?php else: ?>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr><th>Module</th><th>Customer</th><th>Partner</th><th>End Date</th><th>Days Left</th><th></th></tr>
+        </thead>
+        <tbody>
+          <?php foreach ($renewals as $r): ?>
+            <?php
+              $daysLeft = (int) floor((strtotime($r['end_date']) - strtotime(date('Y-m-d'))) / 86400);
+              $daysColor = $daysLeft < 0 ? 'var(--color-danger)' : ($daysLeft <= 30 ? 'var(--color-amber, #D97706)' : 'var(--color-text)');
+              $daysLabel = $daysLeft < 0 ? abs($daysLeft) . ' days overdue' : ($daysLeft === 0 ? 'Today' : $daysLeft . ' days');
+            ?>
+            <tr>
+              <td><span class="badge-outline"><?= e($r['module']) ?></span></td>
+              <td><?= e($r['customer']) ?></td>
+              <td><?= $r['partner'] ? e($r['partner']) : '<span style="color:var(--color-text-muted);">—</span>' ?></td>
+              <td><?= e(format_date($r['end_date'])) ?></td>
+              <td style="color:<?= $daysColor ?>; font-weight:600;"><?= e($daysLabel) ?></td>
+              <td><a href="<?= e($r['url']) ?>">View</a></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  <?php endif; ?>
+</div>
+<?php endif; ?>

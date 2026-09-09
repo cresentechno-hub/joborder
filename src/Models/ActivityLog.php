@@ -27,8 +27,11 @@ final class ActivityLog
         ]);
     }
 
+    /** Column names a caller may sort the list by — never build ORDER BY from raw user input directly. */
+    private const SORTABLE_COLUMNS = ['created_at', 'user_name', 'action', 'entity_type'];
+
     /**
-     * @param array{action?:string, user_id?:int} $filters
+     * @param array{action?:string, user_id?:int, sort?:string, dir?:string} $filters
      * @return array{data: array, total: int, page: int, per_page: int}
      */
     public static function paginate(array $filters, int $page, int $perPage): array
@@ -56,12 +59,18 @@ final class ActivityLog
         $page = max(1, $page);
         $offset = ($page - 1) * $perPage;
 
+        // user_name is a SELECT alias; the rest need the al. prefix since
+        // users also has its own created_at, making it ambiguous otherwise.
+        $sortCol = in_array($filters['sort'] ?? '', self::SORTABLE_COLUMNS, true) ? $filters['sort'] : 'created_at';
+        $sortCol = $sortCol === 'user_name' ? 'user_name' : 'al.' . $sortCol;
+        $sortDir = strtolower((string) ($filters['dir'] ?? '')) === 'asc' ? 'ASC' : 'DESC';
+
         $stmt = $pdo->prepare(
             "SELECT al.*, u.full_name AS user_name
              FROM activity_logs al
              LEFT JOIN users u ON u.id = al.user_id
              {$whereSql}
-             ORDER BY al.created_at DESC, al.id DESC
+             ORDER BY {$sortCol} {$sortDir}, al.id DESC
              LIMIT :limit OFFSET :offset"
         );
         foreach ($params as $key => $value) {

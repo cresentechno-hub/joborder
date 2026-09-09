@@ -23,6 +23,19 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
+// Vendored PHPMailer (no Composer in this project — see src/Vendor/PHPMailer/VERSION.txt).
+spl_autoload_register(function (string $class): void {
+    $prefix = 'PHPMailer\\PHPMailer\\';
+    if (strncmp($prefix, $class, strlen($prefix)) !== 0) {
+        return;
+    }
+    $relative = substr($class, strlen($prefix));
+    $file = SRC_PATH . '/Vendor/PHPMailer/' . str_replace('\\', '/', $relative) . '.php';
+    if (is_file($file)) {
+        require $file;
+    }
+});
+
 require SRC_PATH . '/Helpers/helpers.php';
 
 if (PHP_SAPI !== 'cli') {

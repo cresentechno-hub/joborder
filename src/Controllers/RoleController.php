@@ -19,6 +19,48 @@ final class RoleController extends Controller
         ]);
     }
 
+    public function create(array $params = []): void
+    {
+        $this->view('roles/create');
+    }
+
+    public function store(array $params = []): void
+    {
+        if (!verify_csrf()) {
+            flash('error', 'Your session expired, please try again.');
+            $this->redirect('/roles/create');
+        }
+
+        $input = $_POST;
+        $errors = $this->validate($input);
+
+        if (!empty($errors)) {
+            flash_input($input);
+            flash_errors($errors);
+            $this->redirect('/roles/create');
+        }
+
+        $id = Role::create(trim($input['name']), trim((string) ($input['description'] ?? '')) ?: null);
+
+        ActivityLog::record(Auth::id(), 'role.create', 'role', $id);
+        flash('success', 'Role created. Now set its permissions below.');
+        $this->redirect("/roles/{$id}/permissions");
+    }
+
+    private function validate(array $input): array
+    {
+        $errors = [];
+
+        $name = trim((string) ($input['name'] ?? ''));
+        if ($name === '') {
+            $errors['name'] = 'Role name is required.';
+        } elseif (Role::nameExists($name)) {
+            $errors['name'] = 'A role with this name already exists.';
+        }
+
+        return $errors;
+    }
+
     public function editPermissions(array $params): void
     {
         $role = Role::findById((int) $params['id']);
@@ -28,7 +70,7 @@ final class RoleController extends Controller
 
         $this->view('roles/permissions', [
             'role'              => $role,
-            'permissions'       => Permission::all(),
+            'groupedPermissions' => Permission::allGroupedByModule(),
             'grantedPermIds'    => Role::permissionIds((int) $role['id']),
         ]);
     }

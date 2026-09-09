@@ -19,6 +19,7 @@ final class SettingsController extends Controller
         'stage_pending_alert_days',
         'upload_max_size_mb',
         'allowed_upload_types',
+        'renewal_reminder_months',
     ];
 
     public function edit(array $params = []): void
@@ -50,6 +51,9 @@ final class SettingsController extends Controller
         }
         if (!ctype_digit($values['stage_pending_alert_days']) || (int) $values['stage_pending_alert_days'] < 1) {
             $errors['stage_pending_alert_days'] = 'Pending-alert threshold must be a positive whole number of days.';
+        }
+        if (!ctype_digit($values['renewal_reminder_months']) || (int) $values['renewal_reminder_months'] < 1) {
+            $errors['renewal_reminder_months'] = 'Renewal reminder window must be a positive whole number of months.';
         }
         if (!is_numeric($values['upload_max_size_mb']) || (float) $values['upload_max_size_mb'] <= 0) {
             $errors['upload_max_size_mb'] = 'Max upload size must be a positive number.';

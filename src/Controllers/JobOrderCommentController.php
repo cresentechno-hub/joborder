@@ -32,7 +32,7 @@ final class JobOrderCommentController extends Controller
         if (!$jobOrder) {
             $this->notFound();
         }
-        $this->assertTeamAccess($jobOrder);
+        $this->assertBranchAccess($jobOrder);
         $this->assertStageAccess($jobOrder);
 
         $input = $_POST;
@@ -47,7 +47,8 @@ final class JobOrderCommentController extends Controller
             $invoiceNo = pathinfo($_FILES['comment_invoice_file']['name'], PATHINFO_FILENAME);
         }
 
-        $errors = $this->validate($input, $hasDoFile, $invoiceNo);
+        $assigneeIds = $this->assigneeIdsFromInput($input);
+        $errors = $this->validate($input, $hasDoFile, $invoiceNo, $assigneeIds);
 
         if (!empty($errors)) {
             flash_input($input);
@@ -60,7 +61,7 @@ final class JobOrderCommentController extends Controller
             try {
                 $invoiceUpload = FileUploadService::upload(
                     $_FILES['comment_invoice_file'],
-                    UPLOAD_INVOICE_DIR . '/' . $jobOrderId,
+                    job_order_upload_dir($jobOrder['quotation_no'], 'invoices'),
                     'INV-' . $invoiceNo
                 );
             } catch (Throwable $e) {
@@ -75,7 +76,7 @@ final class JobOrderCommentController extends Controller
             try {
                 $doUpload = FileUploadService::upload(
                     $_FILES['comment_do_file'],
-                    UPLOAD_DO_DIR . '/' . $jobOrderId,
+                    job_order_upload_dir($jobOrder['quotation_no'], 'do'),
                     'DO-' . $invoiceNo
                 );
             } catch (Throwable $e) {
@@ -89,7 +90,7 @@ final class JobOrderCommentController extends Controller
             'job_order_id' => $jobOrderId,
             'stage_id'     => (int) $input['comment_stage_id'],
             'invoice_no'   => $invoiceNo !== '' ? $invoiceNo : null,
-            'assigned_to'  => (int) $input['comment_assigned_to'],
+            'assigned_to'  => $assigneeIds,
             'remark'       => trim((string) ($input['comment_remark'] ?? '')) ?: null,
             'created_by'   => Auth::id(),
         ]);
@@ -97,7 +98,7 @@ final class JobOrderCommentController extends Controller
         if ($invoiceUpload) {
             JobOrderComment::updateInvoiceFile(
                 $commentId,
-                UPLOAD_INVOICE_REL . '/' . $jobOrderId . '/' . $invoiceUpload['stored_name'],
+                job_order_upload_rel($jobOrder['quotation_no'], 'invoices') . '/' . $invoiceUpload['stored_name'],
                 $invoiceUpload['original_name']
             );
         }
@@ -105,7 +106,7 @@ final class JobOrderCommentController extends Controller
         if ($doUpload) {
             JobOrderComment::updateDoFile(
                 $commentId,
-                UPLOAD_DO_REL . '/' . $jobOrderId . '/' . $doUpload['stored_name'],
+                job_order_upload_rel($jobOrder['quotation_no'], 'do') . '/' . $doUpload['stored_name'],
                 $doUpload['original_name']
             );
         }
@@ -117,17 +118,20 @@ final class JobOrderCommentController extends Controller
         // order itself — reusing JobOrder::update() (and its stage-change
         // trigger, current_stage_since, history log) rather than a
         // parallel code path. All other fields carry over unchanged.
+        $oldAssigneeIds = JobOrder::getAssigneeIds($jobOrderId);
         JobOrder::update($jobOrderId, [
             'quotation_no'   => $jobOrder['quotation_no'],
             'customer_name'  => $jobOrder['customer_name'],
             'subject'        => $jobOrder['subject'],
             'total_cost'     => $jobOrder['total_cost'],
             'job_start_date' => $jobOrder['job_start_date'],
-            'assigned_to'    => (int) $input['comment_assigned_to'],
+            'assigned_to'    => $assigneeIds,
+            'branch_id'      => $jobOrder['branch_id'],
             'stage_id'       => (int) $input['comment_stage_id'],
             'remarks'        => $jobOrder['remarks'],
             'updated_by'     => Auth::id(),
         ]);
+        $this->notifyNewAssignees($jobOrder, array_diff($assigneeIds, $oldAssigneeIds));
 
         ActivityLog::record(Auth::id(), 'job_order.comment', 'job_order', $jobOrderId);
         flash('success', 'Comment added.');
@@ -139,11 +143,12 @@ final class JobOrderCommentController extends Controller
         [$jobOrder, $comment] = $this->loadOwned($params);
 
         $this->view('job_orders/comment_edit', [
-            'jobOrder'   => $jobOrder,
-            'comment'    => $comment,
-            'stages'     => JobStage::allActive(),
-            'users'      => User::allActive(),
-            'selectedCc' => JobOrderComment::getCcUserIds((int) $comment['id']),
+            'jobOrder'          => $jobOrder,
+            'comment'           => $comment,
+            'stages'            => JobStage::allActive(),
+            'users'             => User::allActive(),
+            'selectedCc'        => JobOrderComment::getCcUserIds((int) $comment['id']),
+            'selectedAssignees' => JobOrderComment::getAssigneeIds((int) $comment['id']),
         ]);
     }
 
@@ -173,7 +178,8 @@ final class JobOrderCommentController extends Controller
             $invoiceNo = (string) ($comment['invoice_no'] ?? '');
         }
 
-        $errors = $this->validate($input, $hasDoFile, $invoiceNo);
+        $assigneeIds = $this->assigneeIdsFromInput($input);
+        $errors = $this->validate($input, $hasDoFile, $invoiceNo, $assigneeIds);
         if (!empty($errors)) {
             flash_input($input);
             flash('comment_error', implode(' ', $errors));
@@ -184,12 +190,12 @@ final class JobOrderCommentController extends Controller
             try {
                 $up = FileUploadService::upload(
                     $_FILES['comment_invoice_file'],
-                    UPLOAD_INVOICE_DIR . '/' . $jobOrderId,
+                    job_order_upload_dir($jobOrder['quotation_no'], 'invoices'),
                     'INV-' . $invoiceNo
                 );
                 JobOrderComment::updateInvoiceFile(
                     $commentId,
-                    UPLOAD_INVOICE_REL . '/' . $jobOrderId . '/' . $up['stored_name'],
+                    job_order_upload_rel($jobOrder['quotation_no'], 'invoices') . '/' . $up['stored_name'],
                     $up['original_name']
                 );
             } catch (Throwable $e) {
@@ -203,12 +209,12 @@ final class JobOrderCommentController extends Controller
             try {
                 $up = FileUploadService::upload(
                     $_FILES['comment_do_file'],
-                    UPLOAD_DO_DIR . '/' . $jobOrderId,
+                    job_order_upload_dir($jobOrder['quotation_no'], 'do'),
                     'DO-' . $invoiceNo
                 );
                 JobOrderComment::updateDoFile(
                     $commentId,
-                    UPLOAD_DO_REL . '/' . $jobOrderId . '/' . $up['stored_name'],
+                    job_order_upload_rel($jobOrder['quotation_no'], 'do') . '/' . $up['stored_name'],
                     $up['original_name']
                 );
             } catch (Throwable $e) {
@@ -221,7 +227,7 @@ final class JobOrderCommentController extends Controller
         JobOrderComment::update($commentId, [
             'stage_id'    => (int) $input['comment_stage_id'],
             'invoice_no'  => $invoiceNo !== '' ? $invoiceNo : null,
-            'assigned_to' => (int) $input['comment_assigned_to'],
+            'assigned_to' => $assigneeIds,
             'remark'      => trim((string) ($input['comment_remark'] ?? '')) ?: null,
         ]);
 
@@ -230,17 +236,20 @@ final class JobOrderCommentController extends Controller
 
         // Same rule as create: whatever Stage/Assign To this form holds
         // becomes the job order's current stage/assignee.
+        $oldAssigneeIds = JobOrder::getAssigneeIds($jobOrderId);
         JobOrder::update($jobOrderId, [
             'quotation_no'   => $jobOrder['quotation_no'],
             'customer_name'  => $jobOrder['customer_name'],
             'subject'        => $jobOrder['subject'],
             'total_cost'     => $jobOrder['total_cost'],
             'job_start_date' => $jobOrder['job_start_date'],
-            'assigned_to'    => (int) $input['comment_assigned_to'],
+            'assigned_to'    => $assigneeIds,
+            'branch_id'      => $jobOrder['branch_id'],
             'stage_id'       => (int) $input['comment_stage_id'],
             'remarks'        => $jobOrder['remarks'],
             'updated_by'     => Auth::id(),
         ]);
+        $this->notifyNewAssignees($jobOrder, array_diff($assigneeIds, $oldAssigneeIds));
 
         ActivityLog::record(Auth::id(), 'job_order.comment_update', 'job_order_comment', $commentId);
         flash('success', 'Comment updated.');
@@ -276,7 +285,7 @@ final class JobOrderCommentController extends Controller
 
     /**
      * Loads the job order + comment for {id}/{commentId}, enforcing the
-     * same team/stage access as the job order itself, and confirming the
+     * same branch/stage access as the job order itself, and confirming the
      * comment actually belongs to that job order (not just any valid ID).
      * @return array{0: array, 1: array}
      */
@@ -289,7 +298,7 @@ final class JobOrderCommentController extends Controller
         if (!$jobOrder) {
             $this->notFound();
         }
-        $this->assertTeamAccess($jobOrder);
+        $this->assertBranchAccess($jobOrder);
         $this->assertStageAccess($jobOrder);
 
         $comment = JobOrderComment::findById($commentId);
@@ -300,7 +309,15 @@ final class JobOrderCommentController extends Controller
         return [$jobOrder, $comment];
     }
 
-    private function validate(array $input, bool $hasDoFile, string $invoiceNo): array
+    /** @return int[] deduped, cast-to-int assignee IDs pulled from `comment_assigned_to[]`. */
+    private function assigneeIdsFromInput(array $input): array
+    {
+        $raw = (array) ($input['comment_assigned_to'] ?? []);
+        return array_values(array_unique(array_filter(array_map('intval', $raw))));
+    }
+
+    /** @param int[] $assigneeIds */
+    private function validate(array $input, bool $hasDoFile, string $invoiceNo, array $assigneeIds): array
     {
         $errors = [];
 
@@ -308,8 +325,20 @@ final class JobOrderCommentController extends Controller
             $errors[] = 'Please select a valid stage.';
         }
 
-        if (empty($input['comment_assigned_to']) || !User::findById((int) $input['comment_assigned_to'])) {
-            $errors[] = 'Please select a valid user to assign.';
+        if (empty($assigneeIds)) {
+            $errors[] = 'Please select at least one user to assign.';
+        } else {
+            foreach ($assigneeIds as $aid) {
+                if (!User::findById($aid)) {
+                    $errors[] = 'One of the selected assignees is not valid.';
+                    break;
+                }
+                $branchError = $this->assertOwnBranchAssignment($aid);
+                if ($branchError !== null) {
+                    $errors[] = $branchError;
+                    break;
+                }
+            }
         }
 
         foreach ((array) ($input['comment_cc_users'] ?? []) as $ccId) {

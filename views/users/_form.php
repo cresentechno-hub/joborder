@@ -2,7 +2,7 @@
 
 /**
  * Shared create/edit form. Expects: $mode ('create'|'edit'), $roles,
- * $teams, and $targetUser (array, edit only).
+ * $branches, and $targetUser (array, edit only).
  */
 
 $errors = form_errors();
@@ -63,19 +63,19 @@ $isEdit = $mode === 'edit';
   </div>
 
   <div class="form-group">
-    <label class="form-label" for="team_id">Sales Team (optional)</label>
-    <select class="form-control" id="team_id" name="team_id">
-      <option value="">-- No Team --</option>
-      <?php $selectedTeam = old('team_id', (string) ($targetUser['team_id'] ?? '')); ?>
-      <?php foreach ($teams as $t): ?>
-        <option value="<?= (int) $t['id'] ?>" <?= $selectedTeam === (string) $t['id'] ? 'selected' : '' ?>>
-          <?= e($t['name']) ?>
+    <label class="form-label" for="branch_id">Branch (optional)</label>
+    <select class="form-control" id="branch_id" name="branch_id">
+      <option value="">-- No Branch --</option>
+      <?php $selectedBranch = old('branch_id', (string) ($targetUser['branch_id'] ?? '')); ?>
+      <?php foreach ($branches as $b): ?>
+        <option value="<?= (int) $b['id'] ?>" <?= $selectedBranch === (string) $b['id'] ? 'selected' : '' ?>>
+          <?= e($b['name']) ?>
         </option>
       <?php endforeach; ?>
     </select>
     <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
-      Only affects Sales-role users: they only see job orders assigned to a member of their own team.
-      Manage teams under <a href="/teams">Teams</a>.
+      Only affects Sales-role users: they only see job orders/LPR rentals/SMC contracts belonging to their own
+      branch. Manage branches under <a href="/branches">Branches</a>.
     </div>
   </div>
 

@@ -1,7 +1,10 @@
 <?php $success = flash('success'); ?>
 
-<h2 style="margin-top:0;">Roles &amp; Permissions</h2>
-<p style="color: var(--color-text-muted); margin-top:-8px;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:12px;">
+  <h2 style="margin:0;">Roles &amp; Permissions</h2>
+  <a href="/roles/create" class="btn btn-primary">+ New Role</a>
+</div>
+<p style="color: var(--color-text-muted); margin-top:-4px;">
   Controls what each role can do across the system. Assign users to a role from the
   <a href="/users">Users</a> page.
 </p>

@@ -9,35 +9,22 @@
 <?php if ($error): ?><div class="alert alert-error"><?= e($error) ?></div><?php endif; ?>
 
 <div class="card" style="padding:0; overflow-x:auto;">
-  <table class="data-table">
+  <table class="data-table client-sortable">
     <thead>
       <tr>
+        <th class="actions-cell"></th>
         <th>Full Name</th>
         <th>Username</th>
         <th>Email</th>
         <th>Role</th>
-        <th>Team</th>
+        <th>Branch</th>
         <th>Status</th>
         <th>Last Login</th>
-        <th class="actions-cell"></th>
       </tr>
     </thead>
     <tbody>
       <?php foreach ($users as $u): ?>
         <tr>
-          <td><?= e($u['full_name']) ?></td>
-          <td><?= e($u['username']) ?></td>
-          <td><?= e($u['email']) ?></td>
-          <td><span class="badge-outline"><?= e($u['role_name']) ?></span></td>
-          <td><?= $u['team_name'] ? e($u['team_name']) : '<span style="color:var(--color-text-muted);">—</span>' ?></td>
-          <td>
-            <?php if ((int) $u['is_active'] === 1): ?>
-              <span class="badge" style="background: var(--color-success);">Active</span>
-            <?php else: ?>
-              <span class="badge badge-muted">Inactive</span>
-            <?php endif; ?>
-          </td>
-          <td><?= $u['last_login_at'] ? e($u['last_login_at']) : '-' ?></td>
           <td class="actions-cell">
             <a href="/users/<?= (int) $u['id'] ?>/edit">Edit</a>
             &nbsp;|&nbsp;
@@ -49,6 +36,19 @@
               </button>
             </form>
           </td>
+          <td><?= e($u['full_name']) ?></td>
+          <td><?= e($u['username']) ?></td>
+          <td><?= e($u['email']) ?></td>
+          <td><span class="badge-outline"><?= e($u['role_name']) ?></span></td>
+          <td><?= $u['branch_name'] ? e($u['branch_name']) : '<span style="color:var(--color-text-muted);">—</span>' ?></td>
+          <td>
+            <?php if ((int) $u['is_active'] === 1): ?>
+              <span class="badge" style="background: var(--color-success);">Active</span>
+            <?php else: ?>
+              <span class="badge badge-muted">Inactive</span>
+            <?php endif; ?>
+          </td>
+          <td><?= $u['last_login_at'] ? e($u['last_login_at']) : '-' ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>

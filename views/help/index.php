@@ -24,12 +24,14 @@
         $rows = [
             ['Quotation File', "Upload the quotation PDF or image issued to the customer. Required when creating a new job order.", 'QT-2026-0142.pdf'],
             ['PO File', "Upload the customer's Purchase Order once received. Can be left blank at creation and added later via Edit.", 'PO-SUNRISE-8821.pdf'],
+            ['Other Documents', 'Optional. Attach any other supporting files - select multiple at once. Each one can be removed individually from the Edit screen afterwards.', 'site_survey.pdf, signed_agreement.pdf'],
             ['Quotation No', 'The exact quotation number shown on the document. Must be unique in the system.', 'QT-2026-0142'],
             ['Customer Name', 'The company or individual named on the quotation.', 'Sunrise Trading Sdn Bhd'],
             ['Subject', 'A short description of what the quotation is for.', 'Supply of Office Furniture - HQ Level 3'],
             ['Total Cost (RM)', 'The total quotation amount. Numbers only, no commas.', '15800.00'],
             ['Job Start Date', 'The date work/order processing begins - usually the date the PO is received.', '20-08-2026'],
-            ['Assign To', 'The staff member responsible for progressing this job order.', 'Andy Yoon'],
+            ['Branch', 'Which branch this job order belongs to. Sales staff just see their own branch here; Admin/Manager get a dropdown that also narrows the Assign To list below to that branch\'s staff.', 'Penang Branch'],
+            ['Assign To', 'The staff member(s) responsible for progressing this job order - hold Ctrl/Cmd to pick more than one. Sales staff can only pick colleagues at their own branch, or staff with no branch.', 'Andy Yoon, Sarah Lim'],
             ['Job Stage', 'Current stage of the job (see reference below). Update this as the job progresses.', '1 - Purchase Order Received'],
             ['Remarks', 'Optional notes - special instructions, delivery constraints, etc.', 'Customer requires delivery before 15 Sept.'],
         ];
@@ -62,7 +64,7 @@
         <?php
         $commentRows = [
             ['Stage', "Moves the job order to this stage right away.", '5 - Issued DO Invoice For Full Payment'],
-            ['Assign To', 'Reassigns the job order to this staff member.', 'Andy Yoon'],
+            ['Assign To', 'Reassigns the job order to this/these staff member(s) - hold Ctrl/Cmd to pick more than one.', 'Andy Yoon, Sarah Lim'],
             ['CC To', 'Optional. Select one or more staff who should be aware of this update - for record-keeping only, no email is sent.', 'Sarah Lim, Ben Tan'],
             ['Upload Invoice', "Optional. Invoice No auto-fills from this file's own name (e.g. INV20260829-0456.pdf -> INV20260829-0456) - check/correct it before submitting. The stored file is renamed to INV-{Invoice No}.", 'INV20260829-0456.pdf'],
             ['Upload DO', 'Optional. Requires an Invoice No (from the upload above, or typed in directly) - the stored file is renamed to DO-{Invoice No} using that same number.', 'delivery_order_scan.pdf'],
@@ -108,74 +110,39 @@
   <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
     Once a job order reaches <strong>Full Payment Received &amp; Sales Completed</strong> or <strong>Cancel PO</strong>,
     it becomes Admin-only: it disappears from everyone else's list, dashboard, and stage counts (Sales/Manager/Viewer),
-    even for the sales team that handled it. Anyone with edit rights can still move a job order into one of these
+    even for the branch that handled it. Anyone with edit rights can still move a job order into one of these
     stages - they just won't be able to see it there afterwards.
   </p>
 </div>
 
 <div class="card" style="margin-top:20px;">
-  <h3 style="margin-top:0;">Users &amp; Roles Module <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(Admin only)</span></h3>
+  <h3 style="margin-top:0;">LPR Rental Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
-    Create a login for each staff member under <strong>Users</strong> and assign them a role. Roles control what
-    a user can see and do - manage what each role is allowed to do under <strong>Roles &amp; Permissions</strong>.
-    Deactivating a user (instead of deleting) keeps their history on past job orders intact.
-  </p>
-  <div style="overflow-x:auto;">
-    <table class="data-table">
-      <thead><tr><th>Field</th><th>What to enter</th><th>Example</th></tr></thead>
-      <tbody>
-        <?php
-        $userRows = [
-            ['Full Name', 'The staff member\'s display name.', 'Andy Yoon'],
-            ['Username', 'Used to log in. Cannot be changed after the account is created.', 'andyyoon'],
-            ['Email', 'Must be unique. Used for identification only (login is by username).', 'andyyoon@cresentech.com.my'],
-            ['Role', 'Determines what this user can access - see the four default roles below.', 'Sales'],
-            ['Password', 'Minimum 8 characters. Leave blank on Edit to keep the current password.', '(set by the user)'],
-        ];
-        ?>
-        <?php foreach ($userRows as $r): ?>
-          <tr>
-            <td style="font-weight:600; white-space:nowrap;"><?= e($r[0]) ?></td>
-            <td><?= e($r[1]) ?></td>
-            <td style="color: var(--color-text-muted); white-space:nowrap;"><?= e($r[2]) ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  </div>
-  <p style="color: var(--color-text-muted); font-size:13px; margin-top:12px; margin-bottom:0;">
-    Default roles: <strong>Admin</strong> (full access incl. Users/Roles/Settings), <strong>Manager</strong>
-    (all job order actions + reports), <strong>Sales</strong> (create/edit own job orders), <strong>Viewer</strong>
-    (read-only).
+    Tracks invoice printing for LPR rental contracts. Create a contract under <strong>LPR Rental</strong> with its
+    Customer, Partner, Contract Start Date and Month Coverage (12/24/36/48 months) - the system automatically builds
+    one checkbox column per covered month, labelled by year and month. Tick a box once that month's invoice has been
+    printed; it saves immediately. The listing is grouped by partner, opens scrolled to the current month, and keeps
+    Customer/Start Date/Coverage/Email/Actions fixed on the left while the month columns scroll. Use
+    <strong>Export CSV</strong> / <strong>Import</strong> at the top to back up or bulk-load contracts and their
+    checked months. Customer and Partner names come from the <strong>Customers</strong> and
+    <strong>LPR Partners</strong> maintenance lists - add a new one there if it's not in the dropdown yet. Each
+    contract belongs to one <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at
+    their own branch, and new contracts are locked to it automatically.
   </p>
 </div>
 
 <div class="card" style="margin-top:20px;">
-  <h3 style="margin-top:0;">Sales Teams Module <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(Admin only)</span></h3>
+  <h3 style="margin-top:0;">SMC Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
-    Sales teams control who can see which job orders. Create teams under <strong>Teams</strong>, then assign each
-    Sales-role user to a team from their entry in <strong>Users</strong>. A Sales user only sees job orders
-    assigned to a member of their own team - Team A cannot see Team B's job orders, and vice versa. Admin,
-    Manager, and Viewer are unaffected and always see every job order regardless of team.
-  </p>
-  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
-    A Sales user with no team assigned sees no job orders until an Admin assigns them one.
-  </p>
-</div>
-
-<div class="card" style="margin-top:20px;">
-  <h3 style="margin-top:0;">Settings Module <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(Admin only)</span></h3>
-  <p style="color: var(--color-text-muted); font-size:13px;">
-    System-wide options that apply immediately after saving - no redeploy needed. This includes the application
-    name shown in the sidebar, the timezone used for all dates, the pending-stage alert threshold used on the
-    Dashboard, and the upload size/type restrictions used by the Quotation and PO uploads.
-  </p>
-</div>
-
-<div class="card" style="margin-top:20px;">
-  <h3 style="margin-top:0;">Activity Log <span style="color: var(--color-text-muted); font-weight:400; font-size:13px;">(Admin only)</span></h3>
-  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
-    A trace of who did what and when - logins/logouts and every create, update, delete, and permission change
-    across the system. Filter by action type or by user under <strong>Activity Log</strong>.
+    Tracks the monthly schedule status for SMC contracts. Create a contract under <strong>SMC</strong> with its
+    Customer, Contract Start Date and Month Coverage (12/24/36/48 months) - the system automatically builds one
+    status column per covered month, labelled by year and month. Set each month to <strong>Blank</strong>,
+    <strong>SCH</strong> (scheduled) or <strong>DONE</strong> from the dropdown; it saves immediately. The listing
+    opens scrolled to the current month and keeps Customer/Start Date/Coverage/Email/Actions fixed on the left
+    while the month columns scroll. Use <strong>Export CSV</strong> / <strong>Import</strong> at the top to back up
+    or bulk-load contracts and their monthly statuses. Customer names come from the <strong>Customers</strong>
+    maintenance list - add a new one there if it's not in the dropdown yet. Each contract belongs to one
+    <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at their own branch, and new
+    contracts are locked to it automatically.
   </p>
 </div>

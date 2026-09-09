@@ -50,17 +50,17 @@ CREATE TABLE `role_permissions` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- 4. sales_teams (visibility grouping — Sales-role users only see job
---    orders assigned to a teammate; other roles are unrestricted)
+-- 4. branches (data-isolation boundary — a branch-restricted user only
+--    sees job orders/LPR rentals/SMC contracts belonging to their own
+--    branch; other roles are unrestricted)
 -- ---------------------------------------------------------------------
-DROP TABLE IF EXISTS `sales_teams`;
-CREATE TABLE `sales_teams` (
+DROP TABLE IF EXISTS `branches`;
+CREATE TABLE `branches` (
   `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `name`        VARCHAR(100) NOT NULL,
-  `description` VARCHAR(255) NULL,
   `is_active`   TINYINT(1)   NOT NULL DEFAULT 1,
   `created_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uq_sales_teams_name` (`name`)
+  UNIQUE KEY `uq_branches_name` (`name`)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
@@ -74,7 +74,7 @@ CREATE TABLE `users` (
   `password_hash` VARCHAR(255) NOT NULL,
   `full_name`     VARCHAR(150) NOT NULL,
   `role_id`       INT UNSIGNED NOT NULL,
-  `team_id`       INT UNSIGNED NULL COMMENT 'sales team, used to scope visibility for team-restricted roles',
+  `branch_id`     INT UNSIGNED NULL COMMENT 'NULL = unaffiliated (fine for Admin/Manager)',
   `is_active`     TINYINT(1)   NOT NULL DEFAULT 1,
   `failed_login_attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `locked_until`  DATETIME     NULL COMMENT 'brute-force lockout expiry',
@@ -84,11 +84,11 @@ CREATE TABLE `users` (
   UNIQUE KEY `uq_users_username` (`username`),
   UNIQUE KEY `uq_users_email` (`email`),
   KEY `idx_users_role` (`role_id`),
-  KEY `idx_users_team` (`team_id`),
+  KEY `idx_users_branch` (`branch_id`),
   CONSTRAINT `fk_users_role`
     FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_users_team`
-    FOREIGN KEY (`team_id`) REFERENCES `sales_teams` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_users_branch`
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
@@ -128,6 +128,7 @@ CREATE TABLE `job_orders` (
   -- job order tracking fields
   `job_start_date`                DATE          NOT NULL,
   `assigned_to`                   BIGINT UNSIGNED NOT NULL,
+  `branch_id`                     INT UNSIGNED  NOT NULL,
   `stage_id`                      INT UNSIGNED  NOT NULL,
   `current_stage_since`           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                                  COMMENT 'refreshed by trigger whenever stage_id changes',
@@ -144,11 +145,14 @@ CREATE TABLE `job_orders` (
   KEY `idx_job_orders_customer` (`customer_name`),
   KEY `idx_job_orders_stage` (`stage_id`),
   KEY `idx_job_orders_assigned` (`assigned_to`),
+  KEY `idx_job_orders_branch` (`branch_id`),
   KEY `idx_job_orders_start_date` (`job_start_date`),
   KEY `idx_job_orders_deleted` (`is_deleted`),
 
   CONSTRAINT `fk_jo_assigned_to`
     FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_jo_branch`
+    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_jo_stage`
     FOREIGN KEY (`stage_id`) REFERENCES `job_stages` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_jo_created_by`
@@ -212,6 +216,25 @@ CREATE TABLE `job_order_comments` (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
+-- 9a. job_order_documents ("Other Documents" — any number of extra files
+--     attached from the job order form, alongside quotation/PO). Stored
+--     under uploads/{quotation_no}/other/ — see job_order_upload_dir()
+--     in Helpers/helpers.php.
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `job_order_documents`;
+CREATE TABLE `job_order_documents` (
+  `id`            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `job_order_id`  BIGINT UNSIGNED NOT NULL,
+  `file_path`     VARCHAR(255) NOT NULL,
+  `original_name` VARCHAR(255) NOT NULL,
+  `uploaded_by`   BIGINT UNSIGNED NOT NULL,
+  `created_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_jod_job_order` (`job_order_id`),
+  CONSTRAINT `fk_jod_job_order` FOREIGN KEY (`job_order_id`) REFERENCES `job_orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_jod_uploaded_by` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
 -- 10. job_order_comment_cc (multi-user CC list per comment — record
 --     keeping only, this app has no outbound email/notification system)
 -- ---------------------------------------------------------------------
@@ -224,6 +247,155 @@ CREATE TABLE `job_order_comment_cc` (
     FOREIGN KEY (`comment_id`) REFERENCES `job_order_comments` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_jocc_user`
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10a. job_order_assignees (multi-user "Assign To" list for a job order.
+--      job_orders.assigned_to is kept as the PRIMARY assignee — first
+--      person selected — so existing FK/history/trigger
+--      logic that reads a single owner keeps working unchanged; this
+--      table is the full list used for display and visibility checks.)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `job_order_assignees`;
+CREATE TABLE `job_order_assignees` (
+  `job_order_id` BIGINT UNSIGNED NOT NULL,
+  `user_id`      BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`job_order_id`, `user_id`),
+  CONSTRAINT `fk_joa_job_order`
+    FOREIGN KEY (`job_order_id`) REFERENCES `job_orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_joa_user`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10b. job_order_comment_assignees (same multi-user pattern, for the
+--      comment's own "Assign To" — reassigning a job order via a comment
+--      now accepts multiple users too).
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `job_order_comment_assignees`;
+CREATE TABLE `job_order_comment_assignees` (
+  `comment_id` BIGINT UNSIGNED NOT NULL,
+  `user_id`    BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`comment_id`, `user_id`),
+  CONSTRAINT `fk_jocm_comment`
+    FOREIGN KEY (`comment_id`) REFERENCES `job_order_comments` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_jocm_user`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10c. customers (shared master list of customer names — usable by any
+--      module; only LPR Rental references it directly so far)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `customers`;
+CREATE TABLE `customers` (
+  `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `name`       VARCHAR(150) NOT NULL,
+  `is_active`  TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_customers_name` (`name`)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10d. lpr_partners (master list of LPR rental partners)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `lpr_partners`;
+CREATE TABLE `lpr_partners` (
+  `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `name`       VARCHAR(150) NOT NULL,
+  `is_active`  TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_lpr_partners_name` (`name`)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10e. lpr_rentals (LPR rental contracts — invoice-printing tracker)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `lpr_rentals`;
+CREATE TABLE `lpr_rentals` (
+  `id`              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `customer_id`     INT UNSIGNED NOT NULL,
+  `partner_id`      INT UNSIGNED NOT NULL,
+  `branch_id`       INT UNSIGNED NOT NULL,
+  `start_date`      DATE NOT NULL,
+  `coverage_months` TINYINT UNSIGNED NOT NULL COMMENT '12/24/36/48',
+  `customer_email`  VARCHAR(150) NULL,
+  `renewal_reminder_sent_at` DATETIME NULL COMMENT 'NULL = not yet emailed for the current coverage period; reset on every edit',
+  `is_deleted`      TINYINT(1) NOT NULL DEFAULT 0,
+  `created_by`      BIGINT UNSIGNED NOT NULL,
+  `updated_by`      BIGINT UNSIGNED NULL,
+  `created_at`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_lpr_rentals_customer` (`customer_id`),
+  KEY `idx_lpr_rentals_partner` (`partner_id`),
+  KEY `idx_lpr_rentals_branch` (`branch_id`),
+  KEY `idx_lpr_rentals_deleted` (`is_deleted`),
+  CONSTRAINT `fk_lpr_rentals_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lpr_rentals_partner` FOREIGN KEY (`partner_id`) REFERENCES `lpr_partners` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lpr_rentals_branch` FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lpr_rentals_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lpr_rentals_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10f. lpr_rental_invoice_checks (one row per contract-month; the
+--      checkbox grid on the LPR Rental listing reads/writes this)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `lpr_rental_invoice_checks`;
+CREATE TABLE `lpr_rental_invoice_checks` (
+  `rental_id`  BIGINT UNSIGNED NOT NULL,
+  `year_month` CHAR(7) NOT NULL COMMENT 'YYYY-MM',
+  `is_checked` TINYINT(1) NOT NULL DEFAULT 0,
+  `checked_by` BIGINT UNSIGNED NULL,
+  `checked_at` DATETIME NULL,
+  PRIMARY KEY (`rental_id`, `year_month`),
+  CONSTRAINT `fk_lric_rental` FOREIGN KEY (`rental_id`) REFERENCES `lpr_rentals` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_lric_checked_by` FOREIGN KEY (`checked_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10g. smc_contracts (SMC contracts — same shape as lpr_rentals but with
+--      no partner concept; the per-month tracker below stores a
+--      tri-state status instead of a plain checked/unchecked flag)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `smc_contracts`;
+CREATE TABLE `smc_contracts` (
+  `id`              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `customer_id`     INT UNSIGNED NOT NULL,
+  `branch_id`       INT UNSIGNED NOT NULL,
+  `start_date`      DATE NOT NULL,
+  `coverage_months` TINYINT UNSIGNED NOT NULL COMMENT '12/24/36/48',
+  `customer_email`  VARCHAR(150) NULL,
+  `renewal_reminder_sent_at` DATETIME NULL COMMENT 'NULL = not yet emailed for the current coverage period; reset on every edit',
+  `is_deleted`      TINYINT(1) NOT NULL DEFAULT 0,
+  `created_by`      BIGINT UNSIGNED NOT NULL,
+  `updated_by`      BIGINT UNSIGNED NULL,
+  `created_at`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_smc_contracts_customer` (`customer_id`),
+  KEY `idx_smc_contracts_branch` (`branch_id`),
+  KEY `idx_smc_contracts_deleted` (`is_deleted`),
+  CONSTRAINT `fk_smc_contracts_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_smc_contracts_branch` FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_smc_contracts_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_smc_contracts_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10h. smc_contract_statuses (one row per contract-month; the status
+--      dropdown on the SMC listing reads/writes this — '' = Blank,
+--      'SCH' = Scheduled, 'DONE' = Done)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `smc_contract_statuses`;
+CREATE TABLE `smc_contract_statuses` (
+  `contract_id` BIGINT UNSIGNED NOT NULL,
+  `year_month`  CHAR(7) NOT NULL COMMENT 'YYYY-MM',
+  `status`      ENUM('', 'SCH', 'DONE') NOT NULL DEFAULT '',
+  `updated_by`  BIGINT UNSIGNED NULL,
+  `updated_at`  DATETIME NULL,
+  PRIMARY KEY (`contract_id`, `year_month`),
+  CONSTRAINT `fk_scs_contract` FOREIGN KEY (`contract_id`) REFERENCES `smc_contracts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_scs_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
@@ -243,6 +415,40 @@ CREATE TABLE `activity_logs` (
   KEY `idx_activity_entity` (`entity_type`, `entity_id`),
   CONSTRAINT `fk_activity_user`
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- lpr_renewal_recipients (admin-curated: exactly who gets LPR renewal
+-- reminders, independent of role/permission — see
+-- src/Models/LprRenewalRecipient.php. SMC renewal reminders are NOT
+-- affected by this table; they stay permission-based, see
+-- User::activeWithPermission('smc.manage') in database/send_renewal_reminders.php)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `lpr_renewal_recipients`;
+CREATE TABLE `lpr_renewal_recipients` (
+  `user_id`    BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_lpr_renewal_recipients_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- notifications (in-app copy of every email this app sends — see
+-- src/Models/Notification.php. Created independently of whether the
+-- matching email actually succeeds; this is a second, more reliable
+-- channel, not a delivery receipt for the email.)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE `notifications` (
+  `id`         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `user_id`    BIGINT UNSIGNED NOT NULL COMMENT 'recipient',
+  `type`       VARCHAR(50)  NOT NULL COMMENT 'e.g. job_order_assigned, renewal_reminder',
+  `title`      VARCHAR(255) NOT NULL,
+  `message`    TEXT NULL,
+  `link_url`   VARCHAR(255) NULL,
+  `is_read`    TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_notifications_user_unread` (`user_id`, `is_read`),
+  CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
@@ -317,8 +523,11 @@ SELECT
   DATEDIFF(CURDATE(), DATE(jo.current_stage_since))   AS days_in_current_stage,
   jo.assigned_to,
   au.full_name                                        AS assigned_to_name,
-  au.team_id                                          AS assigned_to_team_id,
-  st.name                                              AS assigned_to_team_name,
+  (SELECT GROUP_CONCAT(u2.full_name ORDER BY u2.full_name SEPARATOR ', ')
+     FROM job_order_assignees ja2 JOIN users u2 ON u2.id = ja2.user_id
+     WHERE ja2.job_order_id = jo.id)                  AS assignee_names,
+  jo.branch_id,
+  b.name                                               AS branch_name,
   jo.stage_id,
   js.stage_code,
   js.stage_name,
@@ -328,8 +537,8 @@ SELECT
   jo.updated_at
 FROM job_orders jo
 JOIN users au            ON au.id = jo.assigned_to
+JOIN branches b          ON b.id = jo.branch_id
 JOIN job_stages js       ON js.id = jo.stage_id
-LEFT JOIN sales_teams st ON st.id = au.team_id
 WHERE jo.is_deleted = 0;
 
 -- =====================================================================
@@ -346,17 +555,24 @@ INSERT INTO `roles` (`name`, `description`) VALUES
 -- Permissions
 INSERT INTO `permissions` (`code`, `description`) VALUES
   ('job_order.view',         'View job orders'),
-  ('job_order.view_all',     'View job orders from every sales team, not just your own'),
   ('job_order.view_completed', 'View job orders that are Completed (stage 7) or Cancelled (stage 8)'),
   ('job_order.create',       'Create job orders (upload quotation/PO)'),
   ('job_order.edit',         'Edit job order details'),
   ('job_order.delete',       'Delete (soft-delete) job orders'),
   ('job_order.change_stage', 'Change job order stage'),
+  ('data.view_all_branches', 'View job orders/LPR rentals/SMC contracts from every branch, not just your own'),
+  ('data.view_branch_column', 'See the Branch column/selector in the job order/LPR/SMC lists and forms'),
   ('user.manage',            'Create/edit/deactivate system users'),
   ('role.manage',            'Manage roles and permissions'),
   ('settings.manage',        'Manage system settings'),
   ('report.view',            'View dashboard statistics and reports'),
-  ('activity_log.view',      'View the system activity/audit log');
+  ('activity_log.view',      'View the system activity/audit log'),
+  ('customer.manage',        'Manage the shared customer list'),
+  ('lpr_partner.manage',     'Manage the LPR partner list'),
+  ('lpr_rental.view',        'View the LPR rental invoice-tracking grid'),
+  ('lpr_rental.manage',      'Create/edit/delete LPR rental contracts, tick invoice checks, import/export'),
+  ('smc.view',                'View the SMC schedule-tracking grid'),
+  ('smc.manage',              'Create/edit/delete SMC contracts, set month status, import/export');
 
 -- Role <-> Permission mapping
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
@@ -365,11 +581,13 @@ SELECT r.id, p.id FROM `roles` r, `permissions` p WHERE r.name = 'Admin';
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name = 'Manager'
-  AND p.code IN ('job_order.view','job_order.view_all','job_order.create',
-                 'job_order.edit','job_order.change_stage','report.view');
+  AND p.code IN ('job_order.view','data.view_all_branches','job_order.create',
+                 'job_order.edit','job_order.change_stage','report.view',
+                 'customer.manage','lpr_partner.manage','lpr_rental.view','lpr_rental.manage',
+                 'smc.view','smc.manage');
 
--- Sales intentionally does NOT get job_order.view_all: they only see job
--- orders assigned to a member of their own sales_teams (see JobOrderController).
+-- Sales intentionally does NOT get data.view_all_branches: they only see
+-- records belonging to their own branch (see JobOrderController/LprRentalController/SmcController).
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name = 'Sales'
@@ -379,12 +597,11 @@ WHERE r.name = 'Sales'
 INSERT INTO `role_permissions` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `roles` r, `permissions` p
 WHERE r.name = 'Viewer'
-  AND p.code IN ('job_order.view','job_order.view_all','report.view');
+  AND p.code IN ('job_order.view','data.view_all_branches','report.view','lpr_rental.view','smc.view');
 
--- Sales teams (starter examples — Admin can rename/add more under Teams)
-INSERT INTO `sales_teams` (`name`, `description`) VALUES
-  ('Team A', 'Sales team A'),
-  ('Team B', 'Sales team B');
+-- Branches (starter placeholder — Admin can rename/add more under Branches)
+INSERT INTO `branches` (`name`) VALUES
+  ('Main Branch');
 
 -- Job stages (exact workflow supplied by the business)
 INSERT INTO `job_stages` (`stage_code`, `stage_name`, `sort_order`, `color_code`) VALUES
@@ -408,7 +625,8 @@ INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES
   ('items_per_page',        '20'),
   ('stage_pending_alert_days', '7'),
   ('upload_max_size_mb',    '10'),
-  ('allowed_upload_types',  'pdf,jpg,jpeg,png');
+  ('allowed_upload_types',  'pdf,jpg,jpeg,png'),
+  ('renewal_reminder_months', '3');
 
 -- NOTE: no admin user is seeded here on purpose — password_hash() must be
 -- generated by PHP (bcrypt), not hand-written into SQL. The Step 2 backend

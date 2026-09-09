@@ -25,10 +25,10 @@
   <table class="data-table">
     <thead>
       <tr>
-        <th>Timestamp</th>
-        <th>User</th>
-        <th>Action</th>
-        <th>Entity</th>
+        <th><?= sortable_th('/activity-log', 'created_at', 'Timestamp', $filters) ?></th>
+        <th><?= sortable_th('/activity-log', 'user_name', 'User', $filters) ?></th>
+        <th><?= sortable_th('/activity-log', 'action', 'Action', $filters) ?></th>
+        <th><?= sortable_th('/activity-log', 'entity_type', 'Entity', $filters) ?></th>
         <th>IP Address</th>
       </tr>
     </thead>

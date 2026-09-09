@@ -1,8 +1,11 @@
 <?php
 
 use App\Core\Auth;
+use App\Models\Notification;
 
 $currentUser = Auth::user();
+$unreadCount = Auth::check() ? Notification::unreadCountForUser((int) Auth::id()) : 0;
+$recentNotifications = Auth::check() ? Notification::recentForUser((int) Auth::id()) : [];
 $currentPath = rtrim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') ?: '/';
 $isActive = static fn (string $prefix): string =>
     ($prefix === '/' ? $currentPath === '/' : str_starts_with($currentPath, $prefix)) ? 'active' : '';
@@ -26,9 +29,21 @@ $isActive = static fn (string $prefix): string =>
       <ul class="sidebar-nav">
         <li><a href="/" class="<?= $isActive('/') ?>">Dashboard</a></li>
         <li><a href="/job-orders" class="<?= $isActive('/job-orders') ?>">Job Orders</a></li>
+        <?php if (Auth::can('lpr_rental.view')): ?>
+          <li><a href="/lpr-rentals" class="<?= $isActive('/lpr-rentals') ?>">LPR Rental</a></li>
+        <?php endif; ?>
+        <?php if (Auth::can('smc.view')): ?>
+          <li><a href="/smc" class="<?= $isActive('/smc') ?>">SMC</a></li>
+        <?php endif; ?>
         <?php if (Auth::can('user.manage')): ?>
           <li><a href="/users" class="<?= $isActive('/users') ?>">Users</a></li>
-          <li><a href="/teams" class="<?= $isActive('/teams') ?>">Teams</a></li>
+          <li><a href="/branches" class="<?= $isActive('/branches') ?>">Branches</a></li>
+        <?php endif; ?>
+        <?php if (Auth::can('customer.manage')): ?>
+          <li><a href="/customers" class="<?= $isActive('/customers') ?>">Customers</a></li>
+        <?php endif; ?>
+        <?php if (Auth::can('lpr_partner.manage')): ?>
+          <li><a href="/lpr-partners" class="<?= $isActive('/lpr-partners') ?>">LPR Partners</a></li>
         <?php endif; ?>
         <?php if (Auth::can('role.manage')): ?>
           <li><a href="/roles" class="<?= $isActive('/roles') ?>">Roles</a></li>
@@ -48,6 +63,43 @@ $isActive = static fn (string $prefix): string =>
         <button type="button" class="sidebar-toggle" aria-label="Toggle menu">
           <span></span><span></span><span></span>
         </button>
+
+        <div class="notif-bell-wrap">
+          <button type="button" id="notif-bell-btn" class="notif-bell-btn" aria-label="Notifications">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <?php if ($unreadCount > 0): ?>
+              <span class="notif-bell-badge"><?= $unreadCount > 99 ? '99+' : $unreadCount ?></span>
+            <?php endif; ?>
+          </button>
+          <div id="notif-dropdown" class="notif-dropdown" hidden>
+            <div class="notif-dropdown-head">
+              <span>Notifications</span>
+              <?php if ($unreadCount > 0): ?>
+                <form method="POST" action="/notifications/mark-all-read" style="margin:0;">
+                  <?= csrf_field() ?>
+                  <button type="submit" class="notif-mark-all">Mark all read</button>
+                </form>
+              <?php endif; ?>
+            </div>
+            <div class="notif-dropdown-list">
+              <?php if (empty($recentNotifications)): ?>
+                <div class="notif-empty">No notifications yet.</div>
+              <?php else: ?>
+                <?php foreach ($recentNotifications as $n): ?>
+                  <a href="/notifications/<?= (int) $n['id'] ?>/open" class="notif-item <?= (int) $n['is_read'] === 0 ? 'notif-item-unread' : '' ?>">
+                    <div class="notif-item-title"><?= e($n['title']) ?></div>
+                    <?php if (!empty($n['message'])): ?><div class="notif-item-msg"><?= e($n['message']) ?></div><?php endif; ?>
+                    <div class="notif-item-time"><?= e($n['created_at']) ?></div>
+                  </a>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+
         <span><?= e($currentUser['full_name'] ?? '') ?> &middot; <?= e($currentUser['role_name'] ?? '') ?></span>
         <form method="POST" action="/logout" style="margin:0;">
           <?= csrf_field() ?>

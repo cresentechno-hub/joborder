@@ -1,0 +1,6 @@
+PHPMailer v7.1.1
+Vendored directly (no Composer in this project) from:
+https://github.com/PHPMailer/PHPMailer/tree/v7.1.1/src
+
+Files: Exception.php, SMTP.php, PHPMailer.php — unmodified from upstream.
+To upgrade: replace these 3 files with a newer tagged release's src/ files.

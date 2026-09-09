@@ -51,6 +51,30 @@ $isEdit = $mode === 'edit';
     </div>
   </div>
 
+  <div class="form-group">
+    <label class="form-label">Other Documents (optional)</label>
+    <input class="form-control" type="file" name="other_documents[]" accept="<?= e(upload_accept_attr()) ?>" multiple>
+    <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
+      Attach any other supporting files for this job order - you can select multiple at once. Files upload alongside the rest of this form when you submit.
+    </div>
+    <?php if ($isEdit && !empty($documents)): ?>
+      <ul style="margin:10px 0 0; padding-left:18px; font-size:13px;">
+        <?php foreach ($documents as $doc): ?>
+          <li style="margin-bottom:4px;">
+            <a href="/<?= e($doc['file_path']) ?>" target="_blank" rel="noopener"><?= e($doc['original_name']) ?></a>
+            <span style="color:var(--color-text-muted);">- <?= e($doc['uploaded_by_name']) ?>, <?= e(format_date(substr($doc['created_at'], 0, 10))) ?></span>
+            &nbsp;|&nbsp;
+            <form method="POST" action="/job-orders/<?= (int) $jobOrder['id'] ?>/documents/<?= (int) $doc['id'] ?>/delete" style="display:inline;"
+                  onsubmit="return confirm('Delete this document? This cannot be undone.');">
+              <?= csrf_field() ?>
+              <button type="submit" style="background:none; border:none; padding:0; color: var(--color-danger); cursor:pointer; font-size:12px;">Delete</button>
+            </form>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+  </div>
+
   <div class="form-row">
     <div class="form-group">
       <label class="form-label" for="quotation_no">Quotation No</label>
@@ -87,18 +111,49 @@ $isEdit = $mode === 'edit';
     </div>
   </div>
 
+  <?php
+    // Resolve which assignees are actually pre-selected (old() values on a
+    // validation-failure redisplay, else the job order's current assignee
+    // list).
+    $oldAssignees = old_array('assigned_to');
+    $selectedUsers = $oldAssignees ?: array_map('strval', $assigneeIds ?? (isset($jobOrder['assigned_to']) ? [(string) $jobOrder['assigned_to']] : []));
+  ?>
   <div class="form-row">
     <div class="form-group">
-      <label class="form-label" for="assigned_to">Assign To</label>
-      <select class="form-control" id="assigned_to" name="assigned_to" required>
-        <option value="">-- Select User --</option>
-        <?php $selectedUser = old('assigned_to', (string) ($jobOrder['assigned_to'] ?? '')); ?>
+      <label class="form-label" for="branch_id">Branch</label>
+      <?php if (!empty($canSelectBranch)): ?>
+        <select class="form-control" id="branch_id" name="branch_id" required>
+          <option value="">-- Select Branch --</option>
+          <?php $selectedBranch = old('branch_id', (string) ($jobOrder['branch_id'] ?? $myBranchId ?? '')); ?>
+          <?php foreach ($branches as $b): ?>
+            <option value="<?= (int) $b['id'] ?>" <?= $selectedBranch === (string) $b['id'] ? 'selected' : '' ?>>
+              <?= e($b['name']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+        <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
+          Which branch this job order belongs to. Changing this narrows Assign To below to that branch's staff.
+        </div>
+      <?php else: ?>
+        <input class="form-control" type="text" value="<?= e($myBranchName ?? 'No branch assigned') ?>" disabled>
+        <input type="hidden" name="branch_id" value="<?= (int) ($myBranchId ?? 0) ?>">
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label" for="assigned_to">Assign To (hold Ctrl/Cmd to select multiple)</label>
+      <select class="form-control" id="assigned_to" name="assigned_to[]" multiple size="6" required>
         <?php foreach ($users as $u): ?>
-          <option value="<?= (int) $u['id'] ?>" <?= $selectedUser === (string) $u['id'] ? 'selected' : '' ?>>
+          <option value="<?= (int) $u['id'] ?>" data-branch-id="<?= e((string) ($u['branch_id'] ?? '')) ?>" <?= in_array((string) $u['id'], $selectedUsers, true) ? 'selected' : '' ?>>
             <?= e($u['full_name']) ?>
           </option>
         <?php endforeach; ?>
       </select>
+      <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
+        Select one or more people responsible for this job order.
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label" for="stage_id">Job Stage</label>
@@ -224,5 +279,30 @@ $isEdit = $mode === 'edit';
         readBtn.textContent = 'Read Quotation & Auto-Fill';
       });
   });
+
+  // Branch dropdown (Admin/Manager) narrows the Assign To list. Assign To
+  // is a multi-select, so narrowing must not blindly clear every pick —
+  // it only hides non-matching options, and deselects any option that
+  // becomes hidden (a hidden-but-still-selected option would silently
+  // submit a person outside the branch Branch now says this is scoped to).
+  var branchSelect = document.getElementById('branch_id');
+  var assignSelect = document.getElementById('assigned_to');
+  if (branchSelect && assignSelect) {
+    var applyBranchFilter = function () {
+      var selectedBranch = branchSelect.value;
+      Array.prototype.forEach.call(assignSelect.options, function (opt) {
+        if (!opt.value) { return; }
+        var branchId = opt.getAttribute('data-branch-id') || '';
+        var shouldHide = selectedBranch !== '' && branchId !== '' && branchId !== selectedBranch;
+        opt.hidden = shouldHide;
+        if (shouldHide) { opt.selected = false; }
+      });
+    };
+    // Deliberately NOT run on page load: an existing job order's assignees
+    // were picked under whatever branch applied at the time, so
+    // auto-filtering on load could silently deselect/hide real existing
+    // assignees the moment the page opens.
+    branchSelect.addEventListener('change', applyBranchFilter);
+  }
 })();
 </script>

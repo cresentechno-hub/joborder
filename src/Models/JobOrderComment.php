@@ -9,6 +9,19 @@ use PDO;
 
 final class JobOrderComment
 {
+    /** Rewrites every comment's invoice/DO file paths for a job order after its per-order upload folder was renamed (quotation no changed). */
+    public static function rewritePathsForRenamedFolder(int $jobOrderId, string $oldRel, string $newRel): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare(
+            'UPDATE job_order_comments SET
+                invoice_file_path = REPLACE(invoice_file_path, :old_rel, :new_rel),
+                do_file_path = REPLACE(do_file_path, :old_rel2, :new_rel2)
+             WHERE job_order_id = :job_order_id'
+        );
+        $stmt->execute(['old_rel' => $oldRel, 'new_rel' => $newRel, 'old_rel2' => $oldRel, 'new_rel2' => $newRel, 'job_order_id' => $jobOrderId]);
+    }
+
     public static function findById(int $id): ?array
     {
         $pdo = Database::getInstance();
@@ -18,38 +31,96 @@ final class JobOrderComment
         return $row ?: null;
     }
 
+    /** $data['assigned_to'] is an array of user IDs — first is stored as the primary assigned_to column, full list goes to job_order_comment_assignees. */
     public static function create(array $data): int
     {
+        $assigneeIds = self::normalizeAssigneeIds($data['assigned_to']);
+
         $pdo = Database::getInstance();
-        $stmt = $pdo->prepare(
-            'INSERT INTO job_order_comments (job_order_id, stage_id, invoice_no, assigned_to, remark, created_by)
-             VALUES (:job_order_id, :stage_id, :invoice_no, :assigned_to, :remark, :created_by)'
-        );
-        $stmt->execute([
-            'job_order_id' => $data['job_order_id'],
-            'stage_id'     => $data['stage_id'],
-            'invoice_no'   => $data['invoice_no'] ?? null,
-            'assigned_to'  => $data['assigned_to'],
-            'remark'       => $data['remark'] ?? null,
-            'created_by'   => $data['created_by'],
-        ]);
-        return (int) $pdo->lastInsertId();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare(
+                'INSERT INTO job_order_comments (job_order_id, stage_id, invoice_no, assigned_to, remark, created_by)
+                 VALUES (:job_order_id, :stage_id, :invoice_no, :assigned_to, :remark, :created_by)'
+            );
+            $stmt->execute([
+                'job_order_id' => $data['job_order_id'],
+                'stage_id'     => $data['stage_id'],
+                'invoice_no'   => $data['invoice_no'] ?? null,
+                'assigned_to'  => $assigneeIds[0],
+                'remark'       => $data['remark'] ?? null,
+                'created_by'   => $data['created_by'],
+            ]);
+
+            $id = (int) $pdo->lastInsertId();
+            self::insertAssignees($id, $assigneeIds);
+
+            $pdo->commit();
+            return $id;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
+    /** $data['assigned_to'] is an array of user IDs — see create(). */
     public static function update(int $id, array $data): void
     {
+        $assigneeIds = self::normalizeAssigneeIds($data['assigned_to']);
+
         $pdo = Database::getInstance();
-        $stmt = $pdo->prepare(
-            'UPDATE job_order_comments SET stage_id = :stage_id, invoice_no = :invoice_no,
-                    assigned_to = :assigned_to, remark = :remark WHERE id = :id'
-        );
-        $stmt->execute([
-            'stage_id'    => $data['stage_id'],
-            'invoice_no'  => $data['invoice_no'] ?? null,
-            'assigned_to' => $data['assigned_to'],
-            'remark'      => $data['remark'] ?? null,
-            'id'          => $id,
-        ]);
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare(
+                'UPDATE job_order_comments SET stage_id = :stage_id, invoice_no = :invoice_no,
+                        assigned_to = :assigned_to, remark = :remark WHERE id = :id'
+            );
+            $stmt->execute([
+                'stage_id'    => $data['stage_id'],
+                'invoice_no'  => $data['invoice_no'] ?? null,
+                'assigned_to' => $assigneeIds[0],
+                'remark'      => $data['remark'] ?? null,
+                'id'          => $id,
+            ]);
+
+            $del = $pdo->prepare('DELETE FROM job_order_comment_assignees WHERE comment_id = :id');
+            $del->execute(['id' => $id]);
+            self::insertAssignees($id, $assigneeIds);
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /** @param int[]|string[] $ids @return int[] deduped, at least one element */
+    private static function normalizeAssigneeIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (empty($ids)) {
+            throw new \InvalidArgumentException('At least one assignee is required.');
+        }
+        return $ids;
+    }
+
+    /** @param int[] $assigneeIds */
+    private static function insertAssignees(int $commentId, array $assigneeIds): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('INSERT IGNORE INTO job_order_comment_assignees (comment_id, user_id) VALUES (:cid, :uid)');
+        foreach ($assigneeIds as $uid) {
+            $stmt->execute(['cid' => $commentId, 'uid' => $uid]);
+        }
+    }
+
+    /** @return int[] */
+    public static function getAssigneeIds(int $commentId): array
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('SELECT user_id FROM job_order_comment_assignees WHERE comment_id = :id');
+        $stmt->execute(['id' => $commentId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /** Deletes the comment row (CC pivot rows cascade automatically). Caller is responsible for removing any attached files from disk first. */
@@ -131,22 +202,40 @@ final class JobOrderComment
             return [];
         }
 
+        $commentIds = array_map(static fn (array $c): int => (int) $c['id'], $comments);
+        $placeholders = implode(',', array_fill(0, count($comments), '?'));
+
         $ccStmt = $pdo->prepare(
-            'SELECT cc.comment_id, u.full_name
+            "SELECT cc.comment_id, u.full_name
              FROM job_order_comment_cc cc
              JOIN users u ON u.id = cc.user_id
-             WHERE cc.comment_id IN (' . implode(',', array_fill(0, count($comments), '?')) . ')
-             ORDER BY u.full_name'
+             WHERE cc.comment_id IN ({$placeholders})
+             ORDER BY u.full_name"
         );
-        $ccStmt->execute(array_map(static fn (array $c): int => (int) $c['id'], $comments));
+        $ccStmt->execute($commentIds);
 
         $ccByComment = [];
         foreach ($ccStmt->fetchAll() as $row) {
             $ccByComment[(int) $row['comment_id']][] = $row['full_name'];
         }
 
+        $assigneeStmt = $pdo->prepare(
+            "SELECT ca.comment_id, u.full_name
+             FROM job_order_comment_assignees ca
+             JOIN users u ON u.id = ca.user_id
+             WHERE ca.comment_id IN ({$placeholders})
+             ORDER BY u.full_name"
+        );
+        $assigneeStmt->execute($commentIds);
+
+        $assigneesByComment = [];
+        foreach ($assigneeStmt->fetchAll() as $row) {
+            $assigneesByComment[(int) $row['comment_id']][] = $row['full_name'];
+        }
+
         foreach ($comments as &$comment) {
             $comment['cc_names'] = $ccByComment[(int) $comment['id']] ?? [];
+            $comment['assignee_names'] = $assigneesByComment[(int) $comment['id']] ?? [$comment['assigned_to_name']];
         }
         unset($comment);
 

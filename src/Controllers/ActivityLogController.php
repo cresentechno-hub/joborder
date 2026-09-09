@@ -15,6 +15,8 @@ final class ActivityLogController extends Controller
         $filters = [
             'action'  => trim((string) $this->input('action', '')) ?: null,
             'user_id' => (int) $this->input('user_id', 0) ?: null,
+            'sort'    => trim((string) $this->input('sort', '')) ?: null,
+            'dir'     => trim((string) $this->input('dir', '')) ?: null,
         ];
         $page = max(1, (int) $this->input('page', 1));
 

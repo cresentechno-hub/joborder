@@ -54,6 +54,19 @@ $s = static fn (string $key): string => old($key, e($settings[$key] ?? ''));
       </div>
     </div>
 
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="renewal_reminder_months">Renewal Reminder Window (months)</label>
+        <input class="form-control" type="number" min="1" id="renewal_reminder_months" name="renewal_reminder_months" value="<?= $s('renewal_reminder_months') ?>" required>
+        <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">LPR/SMC contracts within this many months of their coverage end date are flagged on the Dashboard and emailed to staff by the renewal reminder cron job.</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <a href="/settings/lpr-renewal-recipients">Manage LPR Renewal Recipients &rarr;</a>
+      <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">Pick exactly who receives LPR renewal reminders, independent of role. SMC renewal reminders always go to everyone with SMC management permission.</div>
+    </div>
+
     <div class="form-group">
       <label class="form-label" for="allowed_upload_types">Allowed Upload File Types</label>
       <input class="form-control" type="text" id="allowed_upload_types" name="allowed_upload_types" value="<?= $s('allowed_upload_types') ?>" placeholder="pdf,jpg,jpeg,png" required>

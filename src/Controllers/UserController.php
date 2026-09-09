@@ -7,8 +7,8 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Controller;
 use App\Models\ActivityLog;
+use App\Models\Branch;
 use App\Models\Role;
-use App\Models\SalesTeam;
 use App\Models\User;
 
 final class UserController extends Controller
@@ -23,8 +23,8 @@ final class UserController extends Controller
     public function create(array $params = []): void
     {
         $this->view('users/create', [
-            'roles' => Role::all(),
-            'teams' => SalesTeam::allActive(),
+            'roles'    => Role::all(),
+            'branches' => Branch::allActive(),
         ]);
     }
 
@@ -53,7 +53,7 @@ final class UserController extends Controller
             'email'         => trim($input['email']),
             'full_name'     => trim($input['full_name']),
             'role_id'       => (int) $input['role_id'],
-            'team_id'       => !empty($input['team_id']) ? (int) $input['team_id'] : null,
+            'branch_id'     => $this->branchIdFromInput($input),
             'password_hash' => password_hash((string) $input['password'], PASSWORD_BCRYPT),
             'is_active'     => 1,
         ]);
@@ -73,7 +73,7 @@ final class UserController extends Controller
         $this->view('users/edit', [
             'targetUser' => $user,
             'roles'      => Role::all(),
-            'teams'      => SalesTeam::allActive(),
+            'branches'   => Branch::allActive(),
         ]);
     }
 
@@ -117,7 +117,7 @@ final class UserController extends Controller
             'full_name' => trim($input['full_name']),
             'email'     => trim($input['email']),
             'role_id'   => (int) $input['role_id'],
-            'team_id'   => !empty($input['team_id']) ? (int) $input['team_id'] : null,
+            'branch_id' => $this->branchIdFromInput($input),
         ]);
 
         if ($newPassword !== '') {
@@ -190,11 +190,19 @@ final class UserController extends Controller
             $errors['role_id'] = 'Please select a valid role.';
         }
 
-        if (!empty($input['team_id']) && !SalesTeam::findById((int) $input['team_id'])) {
-            $errors['team_id'] = 'Please select a valid sales team.';
+        $branchId = $this->branchIdFromInput($input);
+        if ($branchId !== null && !Branch::findById($branchId)) {
+            $errors['branch_id'] = 'Please select a valid branch.';
         }
 
         return $errors;
+    }
+
+    /** A single branch ID from `branch_id`, or null for an unaffiliated user. */
+    private function branchIdFromInput(array $input): ?int
+    {
+        $raw = trim((string) ($input['branch_id'] ?? ''));
+        return $raw !== '' ? (int) $raw : null;
     }
 
     private function notFound(): never

@@ -26,12 +26,14 @@
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label" for="comment_assigned_to">Assign To</label>
-        <select class="form-control" id="comment_assigned_to" name="comment_assigned_to" required>
-          <option value="">-- Select User --</option>
-          <?php $selectedAssignee = old('comment_assigned_to', (string) $comment['assigned_to']); ?>
+        <label class="form-label" for="comment_assigned_to">Assign To (hold Ctrl/Cmd to select multiple)</label>
+        <select class="form-control" id="comment_assigned_to" name="comment_assigned_to[]" multiple size="5" required>
+          <?php
+            $oldAssignees = old_array('comment_assigned_to');
+            $selectedAssigneeStrings = $oldAssignees ?: array_map('strval', $selectedAssignees);
+          ?>
           <?php foreach ($users as $u): ?>
-            <option value="<?= (int) $u['id'] ?>" <?= $selectedAssignee === (string) $u['id'] ? 'selected' : '' ?>>
+            <option value="<?= (int) $u['id'] ?>" <?= in_array((string) $u['id'], $selectedAssigneeStrings, true) ? 'selected' : '' ?>>
               <?= e($u['full_name']) ?>
             </option>
           <?php endforeach; ?>
