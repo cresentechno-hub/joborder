@@ -53,6 +53,10 @@
         <tr>
           <td style="white-space:nowrap;">
             <a href="/job-orders/<?= (int) $jo['id'] ?>/edit">Edit</a>
+            <?php if ((int) $jo['comment_count'] > 0): ?>
+              &nbsp;|&nbsp;
+              <a href="/job-orders/<?= (int) $jo['id'] ?>/edit#comments" title="View comments">Comments (<?= (int) $jo['comment_count'] ?>)</a>
+            <?php endif; ?>
             <?php if (\App\Core\Auth::can('job_order.delete')): ?>
               &nbsp;|&nbsp;
               <form method="POST" action="/job-orders/<?= (int) $jo['id'] ?>/delete" style="display:inline;"

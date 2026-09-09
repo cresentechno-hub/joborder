@@ -6,25 +6,39 @@ namespace App\Models;
 
 use App\Core\Database;
 use PDO;
+use Throwable;
 
 /** Writes to, and reads back, the audit trail (activity_logs) designed in the Step 1 schema. */
 final class ActivityLog
 {
+    /**
+     * Best-effort — the audit trail is a side effect of whatever the caller
+     * is actually doing (logging out, creating a job order, etc.), never
+     * the point of the request. A session can outlive the user row it
+     * points to (e.g. an Admin deletes a still-logged-in account), which
+     * would otherwise throw an uncaught FK violation here and crash the
+     * primary action along with it — so any failure is swallowed and
+     * logged instead of propagated.
+     */
     public static function record(?int $userId, string $action, ?string $entityType = null, ?int $entityId = null, array $details = []): void
     {
-        $pdo = Database::getInstance();
-        $stmt = $pdo->prepare(
-            'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details, ip_address)
-             VALUES (:user_id, :action, :entity_type, :entity_id, :details, :ip_address)'
-        );
-        $stmt->execute([
-            'user_id'     => $userId,
-            'action'      => $action,
-            'entity_type' => $entityType,
-            'entity_id'   => $entityId,
-            'details'     => $details ? json_encode($details) : null,
-            'ip_address'  => $_SERVER['REMOTE_ADDR'] ?? null,
-        ]);
+        try {
+            $pdo = Database::getInstance();
+            $stmt = $pdo->prepare(
+                'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details, ip_address)
+                 VALUES (:user_id, :action, :entity_type, :entity_id, :details, :ip_address)'
+            );
+            $stmt->execute([
+                'user_id'     => $userId,
+                'action'      => $action,
+                'entity_type' => $entityType,
+                'entity_id'   => $entityId,
+                'details'     => $details ? json_encode($details) : null,
+                'ip_address'  => $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
+        } catch (Throwable $e) {
+            error_log('ActivityLog::record failed — ' . $e->getMessage());
+        }
     }
 
     /** Column names a caller may sort the list by — never build ORDER BY from raw user input directly. */

@@ -527,6 +527,8 @@ SELECT
   (SELECT GROUP_CONCAT(u2.full_name ORDER BY u2.full_name SEPARATOR ', ')
      FROM job_order_assignees ja2 JOIN users u2 ON u2.id = ja2.user_id
      WHERE ja2.job_order_id = jo.id)                  AS assignee_names,
+  (SELECT COUNT(*) FROM job_order_comments jc
+     WHERE jc.job_order_id = jo.id)                   AS comment_count,
   jo.branch_id,
   b.name                                               AS branch_name,
   jo.stage_id,

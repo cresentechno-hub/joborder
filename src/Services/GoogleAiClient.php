@@ -16,12 +16,21 @@ final class GoogleAiClient
 {
     private const CONNECT_TIMEOUT_SECONDS = 5;
     // Gemini's "thinking" models can take noticeably longer than a plain
-    // completion call, especially under load — give it more headroom than
-    // the old Anthropic client needed before falling back. Kept under
-    // PHP's common 30s default max_execution_time so a slow call still
-    // hits this catchable timeout instead of a hard script kill that would
-    // bypass the try/catch fallback entirely.
-    private const TOTAL_TIMEOUT_SECONDS = 25;
+    // completion call, especially under load. Split across up to two
+    // attempts (see generateContent()) rather than one long wait, so a
+    // transient blip gets a fresh connection instead of just running out
+    // the clock. Total worst case (both attempts + the retry delay) stays
+    // under PHP's common 30s default max_execution_time, so a slow call
+    // still hits this catchable timeout instead of a hard script kill that
+    // would bypass the try/catch fallback entirely.
+    private const PER_ATTEMPT_TIMEOUT_SECONDS = 12;
+    private const MAX_ATTEMPTS = 2;
+    private const RETRY_DELAY_SECONDS = 1;
+    // Transient conditions worth one retry: rate-limited or the model
+    // temporarily overloaded/unavailable — both observed in testing.
+    // Anything else (bad key, bad request, etc.) is permanent, so retrying
+    // it would just waste the extra round trip.
+    private const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
 
     /**
      * @param array $payload the generateContent request body (contents, system_instruction, generationConfig, etc.)
@@ -34,6 +43,34 @@ final class GoogleAiClient
             throw new RuntimeException('GOOGLE_AI_API_KEY is not configured.');
         }
 
+        for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
+            $result = self::attempt($payload);
+
+            if ($result['errno'] === 0 && $result['status'] >= 200 && $result['status'] < 300) {
+                $decoded = json_decode((string) $result['body'], true);
+                if (!is_array($decoded)) {
+                    throw new RuntimeException('Google AI API returned an unparseable response.');
+                }
+                return $decoded;
+            }
+
+            $isRetryable = $result['errno'] !== 0 || in_array($result['status'], self::RETRYABLE_STATUSES, true);
+            if ($attempt >= self::MAX_ATTEMPTS || !$isRetryable) {
+                if ($result['errno'] !== 0) {
+                    throw new RuntimeException("Google AI API request failed: {$result['error']}");
+                }
+                throw new RuntimeException("Google AI API returned HTTP {$result['status']}: " . substr((string) $result['body'], 0, 500));
+            }
+
+            sleep(self::RETRY_DELAY_SECONDS);
+        }
+
+        throw new RuntimeException('Google AI API request failed after retrying.');
+    }
+
+    /** @return array{errno: int, error: string, status: int, body: string|false} */
+    private static function attempt(array $payload): array
+    {
         $url = GOOGLE_AI_API_URL . '/models/' . GOOGLE_AI_MODEL . ':generateContent';
 
         $ch = curl_init($url);
@@ -46,7 +83,7 @@ final class GoogleAiClient
                 'content-type: application/json',
             ],
             CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT_SECONDS,
-            CURLOPT_TIMEOUT        => self::TOTAL_TIMEOUT_SECONDS,
+            CURLOPT_TIMEOUT        => self::PER_ATTEMPT_TIMEOUT_SECONDS,
         ]);
 
         $body = curl_exec($ch);
@@ -55,20 +92,7 @@ final class GoogleAiClient
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($errno !== 0) {
-            throw new RuntimeException("Google AI API request failed: {$error}");
-        }
-
-        if ($status < 200 || $status >= 300) {
-            throw new RuntimeException("Google AI API returned HTTP {$status}: " . substr((string) $body, 0, 500));
-        }
-
-        $decoded = json_decode((string) $body, true);
-        if (!is_array($decoded)) {
-            throw new RuntimeException('Google AI API returned an unparseable response.');
-        }
-
-        return $decoded;
+        return ['errno' => $errno, 'error' => $error, 'status' => $status, 'body' => $body];
     }
 
     /**
