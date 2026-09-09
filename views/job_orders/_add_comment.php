@@ -76,14 +76,24 @@ $forceOpen = $commentError !== null;
           <button type="button" id="read-invoice-btn" class="btn btn-outline" style="margin-top:8px; padding:6px 12px; font-size:13px;" disabled>
             Read Invoice &amp; Auto-Fill
           </button>
+          <div id="read-invoice-status" style="margin-top:6px; font-size:12px;"></div>
         </div>
         <div class="form-group">
           <label class="form-label" for="comment_invoice_no">Invoice No</label>
           <input class="form-control" type="text" id="comment_invoice_no" name="comment_invoice_no"
-                 value="<?= old('comment_invoice_no') ?>" placeholder="Auto-filled from the invoice file name">
+                 value="<?= old('comment_invoice_no') ?>" placeholder="Click Read Invoice & Auto-Fill, or type it in">
           <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
             The stored invoice file is renamed to <code>INV-{Invoice No}</code>.
           </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="comment_po_no">PO No (optional)</label>
+        <input class="form-control" type="text" id="comment_po_no" name="comment_po_no"
+               value="<?= old('comment_po_no') ?>" placeholder="Also auto-filled by Read Invoice & Auto-Fill above">
+        <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
+          The customer's own PO/Ref No. as shown on the invoice — for reference only.
         </div>
       </div>
 
@@ -116,7 +126,10 @@ $forceOpen = $commentError !== null;
   var form = document.getElementById('add-comment-form');
   var invoiceFile = document.getElementById('comment_invoice_file');
   var invoiceNo = document.getElementById('comment_invoice_no');
+  var poNo = document.getElementById('comment_po_no');
   var readInvoiceBtn = document.getElementById('read-invoice-btn');
+  var readInvoiceStatus = document.getElementById('read-invoice-status');
+  var csrfToken = form.querySelector('input[name="_csrf"]').value;
 
   toggleBtn.addEventListener('click', function () {
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
@@ -128,12 +141,59 @@ $forceOpen = $commentError !== null;
 
   invoiceFile.addEventListener('change', function () {
     readInvoiceBtn.disabled = !invoiceFile.files.length;
+    readInvoiceStatus.textContent = '';
   });
 
   readInvoiceBtn.addEventListener('click', function () {
-    if (invoiceFile.files.length) {
-      invoiceNo.value = invoiceFile.files[0].name.replace(/\.[^/.]+$/, '');
+    if (!invoiceFile.files.length) {
+      return;
     }
+
+    readInvoiceBtn.disabled = true;
+    readInvoiceBtn.textContent = 'Reading...';
+    readInvoiceStatus.textContent = '';
+
+    var formData = new FormData();
+    formData.append('_csrf', csrfToken);
+    formData.append('comment_invoice_file', invoiceFile.files[0]);
+
+    fetch('/job-orders/extract-invoice', { method: 'POST', body: formData, credentials: 'same-origin' })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        var data = result.data;
+
+        if (!result.ok || data.error) {
+          readInvoiceStatus.style.color = 'var(--color-danger)';
+          readInvoiceStatus.textContent = data.error || 'Could not read the file. Please enter the invoice no. manually.';
+          return;
+        }
+
+        if (data.invoice_no) {
+          invoiceNo.value = data.invoice_no;
+        }
+        if (data.po_no) {
+          poNo.value = data.po_no;
+        }
+
+        if (data.note) {
+          readInvoiceStatus.style.color = 'var(--color-amber, #D97706)';
+          readInvoiceStatus.textContent = data.note;
+        } else if (data.invoice_no || data.po_no) {
+          readInvoiceStatus.style.color = 'var(--color-success)';
+          readInvoiceStatus.textContent = 'Auto-filled from the invoice - please double-check before submitting.';
+        } else {
+          readInvoiceStatus.style.color = 'var(--color-amber, #D97706)';
+          readInvoiceStatus.textContent = 'Could not find an invoice number or PO No - please enter them manually.';
+        }
+      })
+      .catch(function () {
+        readInvoiceStatus.style.color = 'var(--color-danger)';
+        readInvoiceStatus.textContent = 'Could not reach the server. Please enter the invoice no. manually.';
+      })
+      .finally(function () {
+        readInvoiceBtn.disabled = false;
+        readInvoiceBtn.textContent = 'Read Invoice & Auto-Fill';
+      });
   });
 })();
 </script>

@@ -12,12 +12,42 @@ use App\Models\JobOrder;
 use App\Models\JobOrderComment;
 use App\Models\JobStage;
 use App\Models\User;
+use App\Services\AiInvoiceExtractor;
 use App\Services\FileUploadService;
 use Throwable;
 
 final class JobOrderCommentController extends Controller
 {
     use JobOrderAccessGuard;
+
+    /**
+     * AJAX endpoint backing the "Read Invoice & Auto-Fill" button on the
+     * Add Comment form. Best-effort extraction only (PDF or a photo/scan
+     * of one) — never blocks or replaces manual entry. Doesn't persist the
+     * file; the same file gets uploaded again for real when the form is
+     * actually submitted.
+     */
+    public function extractInvoice(array $params = []): void
+    {
+        if (!verify_csrf()) {
+            $this->json(['error' => 'Your session expired, please refresh and try again.'], 419);
+        }
+
+        $file = $_FILES['comment_invoice_file'] ?? null;
+        if (!$file || $file['error'] === UPLOAD_ERR_NO_FILE) {
+            $this->json(['error' => 'No file was uploaded.'], 422);
+        }
+        if ($file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            $this->json(['error' => 'Upload failed, please try again.'], 422);
+        }
+
+        $maxBytes = (int) setting('upload_max_size_mb', (string) UPLOAD_MAX_SIZE_MB) * 1024 * 1024;
+        if ($file['size'] > $maxBytes) {
+            $this->json(['error' => 'File is too large.'], 422);
+        }
+
+        $this->json(AiInvoiceExtractor::extract($file['tmp_name'], $file['name']));
+    }
 
     public function store(array $params): void
     {
@@ -90,6 +120,7 @@ final class JobOrderCommentController extends Controller
             'job_order_id' => $jobOrderId,
             'stage_id'     => (int) $input['comment_stage_id'],
             'invoice_no'   => $invoiceNo !== '' ? $invoiceNo : null,
+            'po_no'        => trim((string) ($input['comment_po_no'] ?? '')) ?: null,
             'assigned_to'  => $assigneeIds,
             'remark'       => trim((string) ($input['comment_remark'] ?? '')) ?: null,
             'created_by'   => Auth::id(),
@@ -227,6 +258,7 @@ final class JobOrderCommentController extends Controller
         JobOrderComment::update($commentId, [
             'stage_id'    => (int) $input['comment_stage_id'],
             'invoice_no'  => $invoiceNo !== '' ? $invoiceNo : null,
+            'po_no'       => trim((string) ($input['comment_po_no'] ?? '')) ?: null,
             'assigned_to' => $assigneeIds,
             'remark'      => trim((string) ($input['comment_remark'] ?? '')) ?: null,
         ]);

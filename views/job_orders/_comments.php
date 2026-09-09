@@ -53,6 +53,10 @@
               <span style="color: var(--color-text-muted);">Invoice No: <?= e($c['invoice_no']) ?></span>
             <?php endif; ?>
 
+            <?php if (!empty($c['po_no'])): ?>
+              <span style="color: var(--color-text-muted);">PO No: <?= e($c['po_no']) ?></span>
+            <?php endif; ?>
+
             <?php if (!empty($c['do_file_path'])): ?>
               <a href="/<?= e($c['do_file_path']) ?>" target="_blank" rel="noopener">
                 DO: <?= e($c['do_file_original_name']) ?>

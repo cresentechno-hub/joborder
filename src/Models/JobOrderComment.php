@@ -40,13 +40,14 @@ final class JobOrderComment
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare(
-                'INSERT INTO job_order_comments (job_order_id, stage_id, invoice_no, assigned_to, remark, created_by)
-                 VALUES (:job_order_id, :stage_id, :invoice_no, :assigned_to, :remark, :created_by)'
+                'INSERT INTO job_order_comments (job_order_id, stage_id, invoice_no, po_no, assigned_to, remark, created_by)
+                 VALUES (:job_order_id, :stage_id, :invoice_no, :po_no, :assigned_to, :remark, :created_by)'
             );
             $stmt->execute([
                 'job_order_id' => $data['job_order_id'],
                 'stage_id'     => $data['stage_id'],
                 'invoice_no'   => $data['invoice_no'] ?? null,
+                'po_no'        => $data['po_no'] ?? null,
                 'assigned_to'  => $assigneeIds[0],
                 'remark'       => $data['remark'] ?? null,
                 'created_by'   => $data['created_by'],
@@ -72,12 +73,13 @@ final class JobOrderComment
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare(
-                'UPDATE job_order_comments SET stage_id = :stage_id, invoice_no = :invoice_no,
+                'UPDATE job_order_comments SET stage_id = :stage_id, invoice_no = :invoice_no, po_no = :po_no,
                         assigned_to = :assigned_to, remark = :remark WHERE id = :id'
             );
             $stmt->execute([
                 'stage_id'    => $data['stage_id'],
                 'invoice_no'  => $data['invoice_no'] ?? null,
+                'po_no'       => $data['po_no'] ?? null,
                 'assigned_to' => $assigneeIds[0],
                 'remark'      => $data['remark'] ?? null,
                 'id'          => $id,

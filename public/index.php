@@ -49,6 +49,13 @@ $router->post('/job-orders/extract-quotation', [JobOrderController::class, 'extr
     // create AND edit forms; every role with create or edit also has view.
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.view'],
 ]);
+// Must be registered before POST /job-orders/{id} below, or the router's
+// {id} segment would greedily match the literal "extract-invoice" first
+// and route here into JobOrderController::update() instead — 404ing on a
+// job order id that doesn't exist.
+$router->post('/job-orders/extract-invoice', [JobOrderCommentController::class, 'extractInvoice'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
+]);
 $router->get('/job-orders/{id}/edit', [JobOrderController::class, 'edit'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'job_order.edit'],
 ]);

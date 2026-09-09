@@ -195,6 +195,7 @@ CREATE TABLE `job_order_comments` (
   `job_order_id`                BIGINT UNSIGNED NOT NULL,
   `stage_id`                    INT UNSIGNED NOT NULL,
   `invoice_no`                  VARCHAR(100) NULL,
+  `po_no`                       VARCHAR(100) NULL COMMENT 'the customer''s PO/Ref No. shown on the invoice — informational only, not linked to job_orders.po_file',
   `invoice_file_path`           VARCHAR(255) NULL,
   `invoice_file_original_name`  VARCHAR(255) NULL,
   `do_file_path`                VARCHAR(255) NULL,
