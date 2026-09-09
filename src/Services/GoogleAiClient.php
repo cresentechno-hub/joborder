@@ -24,13 +24,8 @@ final class GoogleAiClient
     // still hits this catchable timeout instead of a hard script kill that
     // would bypass the try/catch fallback entirely.
     //
-    // TEMP DIAGNOSTIC (2026-09-10): bumped from 12/2 attempts to 20/1
-    // attempt to test whether production timeouts ("0 bytes received" at
-    // ~12000ms on every call) are just slow, or a hard network block from
-    // this host to generativelanguage.googleapis.com. Revert to 12/2 once
-    // confirmed either way.
-    private const PER_ATTEMPT_TIMEOUT_SECONDS = 20;
-    private const MAX_ATTEMPTS = 1;
+    private const PER_ATTEMPT_TIMEOUT_SECONDS = 12;
+    private const MAX_ATTEMPTS = 2;
     private const RETRY_DELAY_SECONDS = 1;
     // Transient conditions worth one retry: rate-limited or the model
     // temporarily overloaded/unavailable — both observed in testing.
