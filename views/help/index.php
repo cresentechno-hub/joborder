@@ -1,7 +1,43 @@
+<?php
+/**
+ * This page doubles as the reference material for the Help chat
+ * assistant (src/Services/HelpChatService.php) — its system prompt is
+ * grounded directly in the same facts documented below. Keep both in
+ * sync: if a module's behavior changes here, update the assistant's
+ * SYSTEM_PROMPT to match, and vice versa.
+ */
+?>
 <h2 style="margin-top:0;">Help &amp; Example Data</h2>
 <p style="color: var(--color-text-muted);">
   A quick reference for filling in each module. Use this alongside the form when creating or updating a Job Order.
 </p>
+
+<div class="card" style="margin-bottom:20px;">
+  <h3 style="margin-top:0;">Ask the Help Assistant</h3>
+  <p style="color: var(--color-text-muted); font-size:13px;">
+    Ask a question about how to use the system - it only knows what's documented on this page, so it won't make up
+    behavior it isn't sure about.
+  </p>
+  <div id="help-chat-log" style="max-height:340px; overflow-y:auto; border:1px solid var(--color-border); border-radius:8px; padding:12px; margin-bottom:10px; background: var(--color-bg);">
+    <?php if (empty($chatHistory)): ?>
+      <p id="help-chat-empty" style="color: var(--color-text-muted); font-size:13px; margin:0;">No messages yet - ask something like "how do I fill in the Job Start Date?"</p>
+    <?php else: ?>
+      <?php foreach ($chatHistory as $m): ?>
+        <div style="margin-bottom:10px;">
+          <div style="font-weight:600; font-size:12px; color: var(--color-slate);"><?= $m['role'] === 'user' ? 'You' : 'Assistant' ?></div>
+          <div style="font-size:13px; white-space:pre-wrap;"><?= e($m['text']) ?></div>
+        </div>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+  <div id="help-chat-status" style="font-size:12px; color: var(--color-danger); margin-bottom:6px;"></div>
+  <form id="help-chat-form" style="display:flex; gap:8px;">
+    <?= csrf_field() ?>
+    <input class="form-control" type="text" id="help-chat-input" name="message" placeholder="Ask a question..." style="flex:1;" autocomplete="off" required>
+    <button type="submit" class="btn btn-primary" id="help-chat-send">Send</button>
+    <button type="button" class="btn btn-outline" id="help-chat-clear">Clear</button>
+  </form>
+</div>
 
 <div class="card" style="margin-bottom:20px;">
   <h3 style="margin-top:0;">Job Order Module</h3>
@@ -146,3 +182,85 @@
     contracts are locked to it automatically.
   </p>
 </div>
+
+<script>
+(function () {
+  var log = document.getElementById('help-chat-log');
+  var emptyMsg = document.getElementById('help-chat-empty');
+  var status = document.getElementById('help-chat-status');
+  var form = document.getElementById('help-chat-form');
+  var input = document.getElementById('help-chat-input');
+  var sendBtn = document.getElementById('help-chat-send');
+  var clearBtn = document.getElementById('help-chat-clear');
+  var csrfToken = form.querySelector('input[name="_csrf"]').value;
+
+  function appendMessage(role, text) {
+    if (emptyMsg) { emptyMsg.remove(); emptyMsg = null; }
+    var wrap = document.createElement('div');
+    wrap.style.marginBottom = '10px';
+    var label = document.createElement('div');
+    label.style.fontWeight = '600';
+    label.style.fontSize = '12px';
+    label.style.color = 'var(--color-slate)';
+    label.textContent = role === 'user' ? 'You' : 'Assistant';
+    var body = document.createElement('div');
+    body.style.fontSize = '13px';
+    body.style.whiteSpace = 'pre-wrap';
+    body.textContent = text;
+    wrap.appendChild(label);
+    wrap.appendChild(body);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var message = input.value.trim();
+    if (!message) { return; }
+
+    status.textContent = '';
+    appendMessage('user', message);
+    input.value = '';
+    input.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Thinking...';
+
+    fetch('/help/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: '_csrf=' + encodeURIComponent(csrfToken) + '&message=' + encodeURIComponent(message),
+      credentials: 'same-origin'
+    })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok || result.data.error) {
+          status.textContent = result.data.error || 'Could not get a reply. Please try again.';
+          return;
+        }
+        appendMessage('model', result.data.reply);
+      })
+      .catch(function () {
+        status.textContent = 'Could not reach the server. Please try again.';
+      })
+      .finally(function () {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send';
+        input.focus();
+      });
+  });
+
+  clearBtn.addEventListener('click', function () {
+    fetch('/help/chat/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: '_csrf=' + encodeURIComponent(csrfToken),
+      credentials: 'same-origin'
+    }).finally(function () {
+      log.innerHTML = '<p id="help-chat-empty" style="color: var(--color-text-muted); font-size:13px; margin:0;">No messages yet - ask something like "how do I fill in the Job Start Date?"</p>';
+      emptyMsg = document.getElementById('help-chat-empty');
+      status.textContent = '';
+    });
+  });
+})();
+</script>

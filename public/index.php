@@ -273,5 +273,7 @@ $router->get('/activity-log', [ActivityLogController::class, 'index'], [
 
 // Help
 $router->get('/help', [HelpController::class, 'index'], [[AuthMiddleware::class, null]]);
+$router->post('/help/chat', [HelpController::class, 'chat'], [[AuthMiddleware::class, null]]);
+$router->post('/help/chat/clear', [HelpController::class, 'clearChat'], [[AuthMiddleware::class, null]]);
 
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

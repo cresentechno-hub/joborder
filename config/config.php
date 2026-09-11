@@ -65,6 +65,13 @@ define('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1/messages');
 // tight 20 requests/day — the lite tier has proven far more usable for this
 // kind of simple field extraction without paying for it).
 define('GOOGLE_AI_MODEL', 'gemini-3.5-flash-lite');
+
+// Help/FAQ chat assistant (src/Services/HelpChatService.php) — deliberately
+// a DIFFERENT model from GOOGLE_AI_MODEL above. Free-tier quota is scoped
+// per model, not per feature, so if chat shared the extraction model, a
+// busy chat day could starve quotation/invoice auto-fill of its own quota
+// (and vice versa). Same GOOGLE_AI_API_KEY as extraction.
+define('GOOGLE_AI_CHAT_MODEL', 'gemini-3.1-flash-lite');
 define('GOOGLE_AI_API_URL', 'https://generativelanguage.googleapis.com/v1beta');
 
 // Outbound email (src/Services/Mailer.php) — job order assignment

@@ -35,17 +35,19 @@ final class GoogleAiClient
 
     /**
      * @param array $payload the generateContent request body (contents, system_instruction, generationConfig, etc.)
+     * @param string $model defaults to GOOGLE_AI_MODEL (quotation/invoice extraction) — pass GOOGLE_AI_CHAT_MODEL
+     *                       or another model explicitly to use a separate free-tier quota bucket
      * @return array the decoded JSON response body
      * @throws RuntimeException if the key is missing, the request fails, or the response isn't valid JSON
      */
-    public static function generateContent(array $payload): array
+    public static function generateContent(array $payload, string $model = GOOGLE_AI_MODEL): array
     {
         if (GOOGLE_AI_API_KEY === '') {
             throw new RuntimeException('GOOGLE_AI_API_KEY is not configured.');
         }
 
         for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
-            $result = self::attempt($payload);
+            $result = self::attempt($payload, $model);
 
             if ($result['errno'] === 0 && $result['status'] >= 200 && $result['status'] < 300) {
                 $decoded = json_decode((string) $result['body'], true);
@@ -70,9 +72,9 @@ final class GoogleAiClient
     }
 
     /** @return array{errno: int, error: string, status: int, body: string|false} */
-    private static function attempt(array $payload): array
+    private static function attempt(array $payload, string $model): array
     {
-        $url = GOOGLE_AI_API_URL . '/models/' . GOOGLE_AI_MODEL . ':generateContent';
+        $url = GOOGLE_AI_API_URL . '/models/' . $model . ':generateContent';
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
