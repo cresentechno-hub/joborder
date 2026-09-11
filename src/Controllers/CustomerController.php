@@ -110,6 +110,90 @@ final class CustomerController extends Controller
         $this->redirect('/customers');
     }
 
+    public function exportCsv(array $params = []): void
+    {
+        $customers = Customer::all();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="customers-' . date('Y-m-d') . '.csv"');
+
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so Excel opens it correctly
+
+        fputcsv($out, ['Customer Name', 'Active']);
+        foreach ($customers as $c) {
+            fputcsv($out, [$c['name'], $c['is_active'] ? '1' : '0']);
+        }
+        fclose($out);
+        exit;
+    }
+
+    public function importForm(array $params = []): void
+    {
+        $this->view('customers/import');
+    }
+
+    public function import(array $params = []): void
+    {
+        if (!verify_csrf()) {
+            flash('error', 'Your session expired, please try again.');
+            $this->redirect('/customers/import');
+        }
+
+        $file = $_FILES['import_file'] ?? null;
+        if (!$file || $file['error'] === UPLOAD_ERR_NO_FILE) {
+            flash('error', 'Please choose a CSV file to import.');
+            $this->redirect('/customers/import');
+        }
+        if ($file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            flash('error', 'Upload failed, please try again.');
+            $this->redirect('/customers/import');
+        }
+
+        $handle = fopen($file['tmp_name'], 'r');
+        if (!$handle) {
+            flash('error', 'Could not read the uploaded file.');
+            $this->redirect('/customers/import');
+        }
+
+        // Strip a UTF-8 BOM if present (Excel adds one on export/save).
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false) {
+            fclose($handle);
+            flash('error', 'The file appears to be empty.');
+            $this->redirect('/customers/import');
+        }
+
+        $added = 0;
+        $updated = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            $name = trim((string) ($row[0] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $active = !in_array(strtolower(trim((string) ($row[1] ?? '1'))), ['0', 'no', 'false', 'inactive'], true);
+
+            $existing = Customer::findByName($name);
+            if ($existing) {
+                Customer::setActive((int) $existing['id'], $active);
+                $updated++;
+            } else {
+                Customer::setActive(Customer::create($name), $active);
+                $added++;
+            }
+        }
+        fclose($handle);
+
+        ActivityLog::record(Auth::id(), 'customer.import');
+        flash('success', "Import complete — {$added} customer(s) added, {$updated} updated.");
+        $this->redirect('/customers');
+    }
+
     private function validate(array $input, ?int $excludeId = null): array
     {
         $errors = [];

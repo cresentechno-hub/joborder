@@ -29,6 +29,15 @@ final class Branch
         return $row ?: null;
     }
 
+    public static function findByName(string $name): ?array
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('SELECT * FROM branches WHERE name = :name LIMIT 1');
+        $stmt->execute(['name' => $name]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
     public static function nameExists(string $name, ?int $excludeId = null): bool
     {
         $pdo = Database::getInstance();

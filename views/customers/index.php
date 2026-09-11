@@ -2,7 +2,11 @@
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
   <h2 style="margin:0;">Customers</h2>
-  <a href="/customers/create" class="btn btn-primary">+ New Customer</a>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="/customers/export" class="btn btn-outline">Export CSV</a>
+    <a href="/customers/import" class="btn btn-outline">Import</a>
+    <a href="/customers/create" class="btn btn-primary">+ New Customer</a>
+  </div>
 </div>
 <p style="color: var(--color-text-muted); margin-top:-8px;">
   Shared customer master list — used by the LPR Rental module's Customer dropdown (and available to any other module going forward).

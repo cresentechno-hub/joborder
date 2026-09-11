@@ -165,6 +165,16 @@
     contract belongs to one <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at
     their own branch, and new contracts are locked to it automatically.
   </p>
+  <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
+  <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Partner,Customer,Start Date,Coverage Months,Customer Email,2026-09,2026-10,...
+Weilong,Eastern Oriental Hotel,2026-03-01,36,contact@eoh.com,1,0,...</pre>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    The first five columns are fixed (Start Date as <code>YYYY-MM-DD</code>, Coverage Months is 12/24/36/48),
+    followed by one column per covered month (header <code>YYYY-MM</code>) with <code>1</code>/<code>0</code>
+    (or Yes/No) marking whether that month's invoice was printed. A row is matched to an existing contract by
+    Partner + Customer + Start Date; unmatched combinations create a new contract, and Partner/Customer names not
+    already in the system are added automatically.
+  </p>
 </div>
 
 <div class="card" style="margin-top:20px;">
@@ -180,6 +190,68 @@
     maintenance list - add a new one there if it's not in the dropdown yet. Each contract belongs to one
     <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at their own branch, and new
     contracts are locked to it automatically.
+  </p>
+  <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
+  <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Customer,Start Date,Coverage Months,Customer Email,2026-09,2026-10,...
+Badan Pengurusan Bersama Wellesly Residences,2026-08-02,24,contact@wellesly.com,SCH,DONE,...</pre>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    The first four columns are fixed (Start Date as <code>YYYY-MM-DD</code>, Coverage Months is 12/24/36/48),
+    followed by one column per covered month (header <code>YYYY-MM</code>) with <code>Blank</code>/<code>SCH</code>/<code>DONE</code>.
+    A row is matched to an existing contract by Customer + Start Date; unmatched combinations create a new
+    contract, and Customer names not already in the system are added automatically.
+  </p>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">Customers Module</h3>
+  <p style="color: var(--color-text-muted); font-size:13px;">
+    Shared customer master list, referenced by the Customer dropdown on LPR Rental, SMC and other modules. Add,
+    edit or deactivate individual customers from the <strong>Customers</strong> page, or bulk-manage the whole list
+    with <strong>Export CSV</strong> / <strong>Import</strong> at the top.
+  </p>
+  <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
+  <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Customer Name,Active
+Sunrise Trading Sdn Bhd,1
+Old Client Sdn Bhd,0</pre>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    <code>Active</code> accepts <code>1</code>/<code>0</code> or Yes/No (blank = active). A row is matched to an
+    existing customer by exact name - unmatched names are added as new customers; matched names have their Active
+    status updated. Re-importing an exported file is safe and won't create duplicates.
+  </p>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">LPR Partners Module</h3>
+  <p style="color: var(--color-text-muted); font-size:13px;">
+    Partner maintenance list used by the LPR Rental module's Partner dropdown (the rental listing is grouped by
+    partner). Add, edit or deactivate individual partners from the <strong>LPR Partners</strong> page, or
+    bulk-manage the whole list with <strong>Export CSV</strong> / <strong>Import</strong> at the top.
+  </p>
+  <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
+  <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Partner Name,Active
+Weilong,1
+Whizcity,1</pre>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    Same rules as the Customers template above: <code>Active</code> is <code>1</code>/<code>0</code> or Yes/No
+    (blank = active), matched by exact Partner Name, safe to re-import.
+  </p>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">Branches Module</h3>
+  <p style="color: var(--color-text-muted); font-size:13px;">
+    Branch maintenance list. Sales-role users only see job orders/LPR rentals/SMC contracts belonging to their own
+    branch; other roles see every branch. Add, edit or deactivate individual branches from the
+    <strong>Branches</strong> page, or bulk-manage the whole list with <strong>Export CSV</strong> /
+    <strong>Import</strong> at the top.
+  </p>
+  <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
+  <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Branch Name,Active
+Main Branch,1
+Penang Branch,1</pre>
+  <p style="color: var(--color-text-muted); font-size:13px; margin-bottom:0;">
+    Same rules as the Customers template above: <code>Active</code> is <code>1</code>/<code>0</code> or Yes/No
+    (blank = active), matched by exact Branch Name, safe to re-import.
   </p>
 </div>
 

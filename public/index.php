@@ -108,6 +108,15 @@ $router->get('/branches', [BranchController::class, 'index'], [
 $router->get('/branches/create', [BranchController::class, 'create'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
+$router->get('/branches/export', [BranchController::class, 'exportCsv'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+$router->get('/branches/import', [BranchController::class, 'importForm'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
+$router->post('/branches/import', [BranchController::class, 'import'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
 $router->post('/branches', [BranchController::class, 'store'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
@@ -121,11 +130,22 @@ $router->post('/branches/{id}/toggle-active', [BranchController::class, 'toggleA
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
 
-// Customers (shared master list)
+// Customers (shared master list) — export/import are literal routes,
+// registered before /customers/{id}/edit for the same reason as Job
+// Orders/LPR Rental above.
 $router->get('/customers', [CustomerController::class, 'index'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
 ]);
 $router->get('/customers/create', [CustomerController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->get('/customers/export', [CustomerController::class, 'exportCsv'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->get('/customers/import', [CustomerController::class, 'importForm'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
+$router->post('/customers/import', [CustomerController::class, 'import'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
 ]);
 $router->post('/customers', [CustomerController::class, 'store'], [
@@ -146,6 +166,15 @@ $router->get('/lpr-partners', [LprPartnerController::class, 'index'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
 ]);
 $router->get('/lpr-partners/create', [LprPartnerController::class, 'create'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->get('/lpr-partners/export', [LprPartnerController::class, 'exportCsv'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->get('/lpr-partners/import', [LprPartnerController::class, 'importForm'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->post('/lpr-partners/import', [LprPartnerController::class, 'import'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
 ]);
 $router->post('/lpr-partners', [LprPartnerController::class, 'store'], [

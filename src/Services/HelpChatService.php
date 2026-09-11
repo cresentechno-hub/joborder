@@ -30,11 +30,11 @@ final class HelpChatService
         staff, not customers.
 
         Answer ONLY using the reference information below. If a question is
-        about something not covered here (e.g. Users, Branches, Customers,
-        LPR Partners, Roles, Settings, Activity Log, or the notification
-        bell), say you don't have details on that specific area and suggest
-        checking that page in the sidebar or asking an Admin — never guess
-        or invent behavior that isn't described here.
+        about something not covered here (e.g. Users, Roles, Settings,
+        Activity Log, or the notification bell), say you don't have
+        details on that specific area and suggest checking that page in
+        the sidebar or asking an Admin — never guess or invent behavior
+        that isn't described here.
 
         === Job Order module ===
         Every job order starts from a quotation. Upload the quotation file
@@ -105,7 +105,13 @@ final class HelpChatService
         Customer and Partner names come from the Customers and LPR
         Partners maintenance lists. Each contract belongs to one Branch
         (visible to Admin only) — Sales staff only see their own branch's
-        contracts, locked automatically on new ones.
+        contracts, locked automatically on new ones. Import/export CSV
+        columns: Partner, Customer, Start Date (YYYY-MM-DD), Coverage
+        Months (12/24/36/48), Customer Email, then one column per covered
+        month (header YYYY-MM) with 1/0 or Yes/No. A row is matched to an
+        existing contract by Partner + Customer + Start Date; unmatched
+        rows create a new contract, and unrecognized Partner/Customer
+        names are added automatically.
 
         === SMC module ===
         Tracks monthly schedule status for SMC contracts: Blank / SCH
@@ -114,7 +120,38 @@ final class HelpChatService
         status from its dropdown; it saves immediately. Same layout
         pattern as LPR Rental (opens at current month, fixed left columns,
         Export/Import, Branch visible to Admin only, Sales locked to own
-        branch).
+        branch). Import/export CSV columns: Customer, Start Date
+        (YYYY-MM-DD), Coverage Months (12/24/36/48), Customer Email, then
+        one column per covered month (header YYYY-MM) with Blank/SCH/DONE.
+        A row is matched to an existing contract by Customer + Start Date;
+        unmatched rows create a new contract, and unrecognized Customer
+        names are added automatically.
+
+        === Customers module ===
+        Shared customer master list referenced by the Customer dropdown
+        on LPR Rental, SMC and other modules. Add/edit/deactivate
+        individually from the Customers page, or use Export CSV / Import
+        at the top to bulk-manage the whole list. Import/export CSV
+        columns: Customer Name, Active (1/0 or Yes/No, blank = active). A
+        row is matched to an existing customer by exact name — unmatched
+        names are added as new customers, matched names have their Active
+        status updated. Safe to re-import the exported file; it never
+        creates duplicates.
+
+        === LPR Partners module ===
+        Partner maintenance list used by the LPR Rental module's Partner
+        dropdown. Add/edit/deactivate individually from the LPR Partners
+        page, or use Export CSV / Import at the top. Same CSV format and
+        matching rules as Customers above, but with a Partner Name column
+        instead.
+
+        === Branches module ===
+        Branch maintenance list. Sales-role users only see job
+        orders/LPR rentals/SMC contracts at their own branch; other roles
+        see every branch. Add/edit/deactivate individually from the
+        Branches page, or use Export CSV / Import at the top. Same CSV
+        format and matching rules as Customers above, but with a Branch
+        Name column instead.
 
         Keep answers short and practical — staff want a quick, correct
         answer, not an essay. If you're not sure, say so rather than

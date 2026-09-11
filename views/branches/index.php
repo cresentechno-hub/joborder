@@ -2,7 +2,11 @@
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
   <h2 style="margin:0;">Branches</h2>
-  <a href="/branches/create" class="btn btn-primary">+ New Branch</a>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="/branches/export" class="btn btn-outline">Export CSV</a>
+    <a href="/branches/import" class="btn btn-outline">Import</a>
+    <a href="/branches/create" class="btn btn-primary">+ New Branch</a>
+  </div>
 </div>
 <p style="color: var(--color-text-muted); margin-top:-8px;">
   Sales-role users only see job orders/LPR rentals/SMC contracts belonging to their own branch. Other roles
