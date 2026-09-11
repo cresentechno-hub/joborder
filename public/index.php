@@ -129,6 +129,9 @@ $router->post('/branches/{id}', [BranchController::class, 'update'], [
 $router->post('/branches/{id}/toggle-active', [BranchController::class, 'toggleActive'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
+$router->post('/branches/{id}/delete', [BranchController::class, 'destroy'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
 
 // Customers (shared master list) — export/import are literal routes,
 // registered before /customers/{id}/edit for the same reason as Job
@@ -160,6 +163,9 @@ $router->post('/customers/{id}', [CustomerController::class, 'update'], [
 $router->post('/customers/{id}/toggle-active', [CustomerController::class, 'toggleActive'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
 ]);
+$router->post('/customers/{id}/delete', [CustomerController::class, 'destroy'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'customer.manage'],
+]);
 
 // LPR Partners
 $router->get('/lpr-partners', [LprPartnerController::class, 'index'], [
@@ -187,6 +193,9 @@ $router->post('/lpr-partners/{id}', [LprPartnerController::class, 'update'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
 ]);
 $router->post('/lpr-partners/{id}/toggle-active', [LprPartnerController::class, 'toggleActive'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
+]);
+$router->post('/lpr-partners/{id}/delete', [LprPartnerController::class, 'destroy'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'lpr_partner.manage'],
 ]);
 

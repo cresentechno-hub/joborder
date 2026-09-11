@@ -8,6 +8,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Models\ActivityLog;
 use App\Models\LprPartner;
+use Throwable;
 
 final class LprPartnerController extends Controller
 {
@@ -107,6 +108,38 @@ final class LprPartnerController extends Controller
         LprPartner::setActive($id, !$partner['is_active']);
         ActivityLog::record(Auth::id(), $partner['is_active'] ? 'lpr_partner.deactivate' : 'lpr_partner.activate', 'lpr_partner', $id);
         flash('success', $partner['is_active'] ? 'Partner deactivated.' : 'Partner activated.');
+        $this->redirect('/lpr-partners');
+    }
+
+    public function destroy(array $params): void
+    {
+        $id = (int) $params['id'];
+
+        if (!verify_csrf()) {
+            flash('error', 'Your session expired, please try again.');
+            $this->redirect('/lpr-partners');
+        }
+
+        $partner = LprPartner::findById($id);
+        if (!$partner) {
+            $this->notFound();
+        }
+
+        $rentals = LprPartner::rentalCount($id);
+        if ($rentals > 0) {
+            flash('error', "Cannot delete \"{$partner['name']}\" — still referenced by {$rentals} LPR rental(s). Deactivate it instead.");
+            $this->redirect('/lpr-partners');
+        }
+
+        try {
+            LprPartner::delete($id);
+        } catch (Throwable $e) {
+            flash('error', "Cannot delete \"{$partner['name']}\" — it's still referenced by other records. Deactivate it instead.");
+            $this->redirect('/lpr-partners');
+        }
+
+        ActivityLog::record(Auth::id(), 'lpr_partner.delete', 'lpr_partner', $id);
+        flash('success', 'Partner deleted.');
         $this->redirect('/lpr-partners');
     }
 

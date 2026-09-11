@@ -8,6 +8,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Models\ActivityLog;
 use App\Models\Customer;
+use Throwable;
 
 final class CustomerController extends Controller
 {
@@ -107,6 +108,39 @@ final class CustomerController extends Controller
         Customer::setActive($id, !$customer['is_active']);
         ActivityLog::record(Auth::id(), $customer['is_active'] ? 'customer.deactivate' : 'customer.activate', 'customer', $id);
         flash('success', $customer['is_active'] ? 'Customer deactivated.' : 'Customer activated.');
+        $this->redirect('/customers');
+    }
+
+    public function destroy(array $params): void
+    {
+        $id = (int) $params['id'];
+
+        if (!verify_csrf()) {
+            flash('error', 'Your session expired, please try again.');
+            $this->redirect('/customers');
+        }
+
+        $customer = Customer::findById($id);
+        if (!$customer) {
+            $this->notFound();
+        }
+
+        $rentals = Customer::lprRentalCount($id);
+        $contracts = Customer::smcContractCount($id);
+        if ($rentals > 0 || $contracts > 0) {
+            flash('error', "Cannot delete \"{$customer['name']}\" — still referenced by {$rentals} LPR rental(s) and {$contracts} SMC contract(s). Deactivate it instead.");
+            $this->redirect('/customers');
+        }
+
+        try {
+            Customer::delete($id);
+        } catch (Throwable $e) {
+            flash('error', "Cannot delete \"{$customer['name']}\" — it's still referenced by other records. Deactivate it instead.");
+            $this->redirect('/customers');
+        }
+
+        ActivityLog::record(Auth::id(), 'customer.delete', 'customer', $id);
+        flash('success', 'Customer deleted.');
         $this->redirect('/customers');
     }
 

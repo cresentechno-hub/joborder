@@ -41,6 +41,12 @@
                 <?= (int) $c['is_active'] === 1 ? 'Deactivate' : 'Activate' ?>
               </button>
             </form>
+            &nbsp;|&nbsp;
+            <form method="POST" action="/customers/<?= (int) $c['id'] ?>/delete" style="display:inline;"
+                  onsubmit="return confirm('Permanently delete this customer? This cannot be undone, and will fail if it still has LPR rentals or SMC contracts.');">
+              <?= csrf_field() ?>
+              <button type="submit" style="background:none; border:none; padding:0; color: var(--color-danger); cursor:pointer; font-size:13px;">Delete</button>
+            </form>
           </td>
           <td><?= e($c['name']) ?></td>
           <td style="text-align:center;"><?= (int) $c['rental_count'] ?></td>

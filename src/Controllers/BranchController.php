@@ -8,6 +8,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Models\ActivityLog;
 use App\Models\Branch;
+use Throwable;
 
 final class BranchController extends Controller
 {
@@ -107,6 +108,37 @@ final class BranchController extends Controller
         Branch::setActive($id, !$branch['is_active']);
         ActivityLog::record(Auth::id(), $branch['is_active'] ? 'branch.deactivate' : 'branch.activate', 'branch', $id);
         flash('success', $branch['is_active'] ? 'Branch deactivated.' : 'Branch activated.');
+        $this->redirect('/branches');
+    }
+
+    public function destroy(array $params): void
+    {
+        $id = (int) $params['id'];
+
+        if (!verify_csrf()) {
+            flash('error', 'Your session expired, please try again.');
+            $this->redirect('/branches');
+        }
+
+        $branch = Branch::findById($id);
+        if (!$branch) {
+            $this->notFound();
+        }
+
+        if (Branch::isInUse($id)) {
+            flash('error', "Cannot delete \"{$branch['name']}\" — it still has users, job orders, or contracts assigned to it. Deactivate it instead.");
+            $this->redirect('/branches');
+        }
+
+        try {
+            Branch::delete($id);
+        } catch (Throwable $e) {
+            flash('error', "Cannot delete \"{$branch['name']}\" — it's still referenced by other records. Deactivate it instead.");
+            $this->redirect('/branches');
+        }
+
+        ActivityLog::record(Auth::id(), 'branch.delete', 'branch', $id);
+        flash('success', 'Branch deleted.');
         $this->redirect('/branches');
     }
 

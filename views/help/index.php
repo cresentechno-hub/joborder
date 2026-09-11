@@ -206,8 +206,10 @@ Badan Pengurusan Bersama Wellesly Residences,2026-08-02,24,contact@wellesly.com,
   <h3 style="margin-top:0;">Customers Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
     Shared customer master list, referenced by the Customer dropdown on LPR Rental, SMC and other modules. Add,
-    edit or deactivate individual customers from the <strong>Customers</strong> page, or bulk-manage the whole list
-    with <strong>Export CSV</strong> / <strong>Import</strong> at the top.
+    edit, deactivate or delete individual customers from the <strong>Customers</strong> page, or bulk-manage the
+    whole list with <strong>Export CSV</strong> / <strong>Import</strong> at the top. <strong>Delete</strong> is
+    permanent and only works if the customer has no LPR rentals or SMC contracts (even old/removed ones still
+    count) - use <strong>Deactivate</strong> instead to just hide it from dropdowns while keeping its history.
   </p>
   <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
   <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Customer Name,Active
@@ -224,8 +226,11 @@ Old Client Sdn Bhd,0</pre>
   <h3 style="margin-top:0;">LPR Partners Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
     Partner maintenance list used by the LPR Rental module's Partner dropdown (the rental listing is grouped by
-    partner). Add, edit or deactivate individual partners from the <strong>LPR Partners</strong> page, or
+    partner). Add, edit, deactivate or delete individual partners from the <strong>LPR Partners</strong> page, or
     bulk-manage the whole list with <strong>Export CSV</strong> / <strong>Import</strong> at the top.
+    <strong>Delete</strong> is permanent and only works if the partner has no LPR rentals (even old/removed ones
+    still count) - use <strong>Deactivate</strong> instead to just hide it from the dropdown while keeping its
+    history.
   </p>
   <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
   <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Partner Name,Active
@@ -241,9 +246,11 @@ Whizcity,1</pre>
   <h3 style="margin-top:0;">Branches Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
     Branch maintenance list. Sales-role users only see job orders/LPR rentals/SMC contracts belonging to their own
-    branch; other roles see every branch. Add, edit or deactivate individual branches from the
+    branch; other roles see every branch. Add, edit, deactivate or delete individual branches from the
     <strong>Branches</strong> page, or bulk-manage the whole list with <strong>Export CSV</strong> /
-    <strong>Import</strong> at the top.
+    <strong>Import</strong> at the top. <strong>Delete</strong> is permanent and only works if the branch has no
+    users, job orders, LPR rentals, or SMC contracts assigned to it - use <strong>Deactivate</strong> instead to
+    keep it (and its history) while hiding it from new assignments.
   </p>
   <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
   <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Branch Name,Active

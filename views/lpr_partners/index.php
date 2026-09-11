@@ -41,6 +41,12 @@
                 <?= (int) $p['is_active'] === 1 ? 'Deactivate' : 'Activate' ?>
               </button>
             </form>
+            &nbsp;|&nbsp;
+            <form method="POST" action="/lpr-partners/<?= (int) $p['id'] ?>/delete" style="display:inline;"
+                  onsubmit="return confirm('Permanently delete this partner? This cannot be undone, and will fail if it still has LPR rentals.');">
+              <?= csrf_field() ?>
+              <button type="submit" style="background:none; border:none; padding:0; color: var(--color-danger); cursor:pointer; font-size:13px;">Delete</button>
+            </form>
           </td>
           <td><?= e($p['name']) ?></td>
           <td style="text-align:center;"><?= (int) $p['rental_count'] ?></td>

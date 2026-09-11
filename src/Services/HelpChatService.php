@@ -129,29 +129,37 @@ final class HelpChatService
 
         === Customers module ===
         Shared customer master list referenced by the Customer dropdown
-        on LPR Rental, SMC and other modules. Add/edit/deactivate
+        on LPR Rental, SMC and other modules. Add/edit/deactivate/delete
         individually from the Customers page, or use Export CSV / Import
         at the top to bulk-manage the whole list. Import/export CSV
         columns: Customer Name, Active (1/0 or Yes/No, blank = active). A
         row is matched to an existing customer by exact name — unmatched
         names are added as new customers, matched names have their Active
         status updated. Safe to re-import the exported file; it never
-        creates duplicates.
+        creates duplicates. Delete is permanent and only works if the
+        customer has no LPR rentals or SMC contracts (even old/removed
+        ones still count) — Deactivate instead just hides it from
+        dropdowns while keeping its history.
 
         === LPR Partners module ===
         Partner maintenance list used by the LPR Rental module's Partner
-        dropdown. Add/edit/deactivate individually from the LPR Partners
-        page, or use Export CSV / Import at the top. Same CSV format and
-        matching rules as Customers above, but with a Partner Name column
-        instead.
+        dropdown. Add/edit/deactivate/delete individually from the LPR
+        Partners page, or use Export CSV / Import at the top. Same CSV
+        format and matching rules as Customers above, but with a Partner
+        Name column instead. Delete is permanent and only works if the
+        partner has no LPR rentals — Deactivate instead just hides it
+        from the dropdown while keeping its history.
 
         === Branches module ===
         Branch maintenance list. Sales-role users only see job
         orders/LPR rentals/SMC contracts at their own branch; other roles
-        see every branch. Add/edit/deactivate individually from the
-        Branches page, or use Export CSV / Import at the top. Same CSV
-        format and matching rules as Customers above, but with a Branch
-        Name column instead.
+        see every branch. Add/edit/deactivate/delete individually from
+        the Branches page, or use Export CSV / Import at the top. Same
+        CSV format and matching rules as Customers above, but with a
+        Branch Name column instead. Delete is permanent and only works if
+        the branch has no users, job orders, LPR rentals, or SMC
+        contracts assigned to it — Deactivate instead keeps it (and its
+        history) while hiding it from new assignments.
 
         Keep answers short and practical — staff want a quick, correct
         answer, not an essay. If you're not sure, say so rather than

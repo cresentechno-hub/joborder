@@ -90,4 +90,17 @@ final class LprPartner
         $stmt->execute(['id' => $id]);
         return (int) $stmt->fetchColumn();
     }
+
+    /**
+     * Hard delete — only safe when nothing references this partner.
+     * Callers should check rentalCount() first for a friendly message; the
+     * FK constraint (ON DELETE RESTRICT on lpr_rentals.partner_id) is the
+     * real backstop and will throw a PDOException if something still does.
+     */
+    public static function delete(int $id): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('DELETE FROM lpr_partners WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+    }
 }

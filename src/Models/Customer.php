@@ -84,6 +84,29 @@ final class Customer
         $stmt->execute(['active' => $active ? 1 : 0, 'id' => $id]);
     }
 
+    /**
+     * Hard delete — only safe when nothing references this customer.
+     * Callers should check lprRentalCount()/smcContractCount() first for a
+     * friendly message; the FK constraints (ON DELETE RESTRICT on both
+     * lpr_rentals.customer_id and smc_contracts.customer_id) are the real
+     * backstop and will throw a PDOException if something still does.
+     */
+    public static function delete(int $id): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('DELETE FROM customers WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+    }
+
+    /** Whether any SMC contract still references this customer — see lprRentalCount() above. */
+    public static function smcContractCount(int $id): int
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM smc_contracts WHERE customer_id = :id AND is_deleted = 0');
+        $stmt->execute(['id' => $id]);
+        return (int) $stmt->fetchColumn();
+    }
+
     /** Whether any LPR rental still references this customer — checked before deactivating isn't required, but useful context in the UI. */
     public static function lprRentalCount(int $id): int
     {

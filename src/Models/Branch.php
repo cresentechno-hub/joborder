@@ -81,4 +81,50 @@ final class Branch
         $stmt->execute(['id' => $id]);
         return (int) $stmt->fetchColumn();
     }
+
+    /**
+     * Whether anything still references this branch — job orders, LPR
+     * rentals, SMC contracts (all ON DELETE RESTRICT — the real backstop
+     * that delete() would hit anyway) or assigned users (ON DELETE SET
+     * NULL, so the DB wouldn't block it, but silently unassigning real
+     * staff from their branch as a side effect of a delete isn't
+     * acceptable — checked explicitly here instead).
+     */
+    public static function isInUse(int $id): bool
+    {
+        $pdo = Database::getInstance();
+
+        if (self::memberCount($id) > 0) {
+            return true;
+        }
+
+        $checks = [
+            'SELECT COUNT(*) FROM job_orders WHERE branch_id = :id AND is_deleted = 0',
+            'SELECT COUNT(*) FROM lpr_rentals WHERE branch_id = :id AND is_deleted = 0',
+            'SELECT COUNT(*) FROM smc_contracts WHERE branch_id = :id AND is_deleted = 0',
+        ];
+        foreach ($checks as $sql) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['id' => $id]);
+            if ((int) $stmt->fetchColumn() > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Hard delete — only safe when nothing references this branch.
+     * Callers should check isInUse() first for a friendly message; the FK
+     * constraints are the real backstop and will throw a PDOException if
+     * something still does (including soft-deleted rows isInUse() can't
+     * see, since they still physically exist).
+     */
+    public static function delete(int $id): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('DELETE FROM branches WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+    }
 }
