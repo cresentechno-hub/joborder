@@ -15,3 +15,11 @@ Thumbs.db
 
 # API keys — copy config/secrets.example.php to config/secrets.php and fill in real values there
 /config/secrets.php
+
+# Per-environment settings (APP_ENV/APP_DEBUG/APP_URL) and DB credentials —
+# differ between local dev and production, so a `git pull` on a production
+# server must never be able to overwrite them. Copy config/env.example.php
+# to config/env.php, and config/database.example.php to config/database.php,
+# then fill in real values in each.
+/config/env.php
+/config/database.php

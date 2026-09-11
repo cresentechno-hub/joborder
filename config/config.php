@@ -3,16 +3,30 @@ declare(strict_types=1);
 
 // ---------------------------------------------------------------------
 // Application configuration. Plain PHP constants — no Composer, no .env
-// parser. Edit directly per environment (local / production).
+// parser.
 // ---------------------------------------------------------------------
 
-define('APP_ENV', 'local');              // local | production
-define('APP_DEBUG', true);               // set to false in production
+// APP_ENV / APP_DEBUG / APP_URL are environment-specific (differ between
+// local dev and production) so they live in config/env.php — gitignored,
+// same pattern as config/secrets.php — instead of here. This file is meant
+// to be identical on every environment so `git pull` on a production
+// server can never silently revert it to another environment's settings.
+// Copy config/env.example.php to config/env.php and fill in real values.
+if (file_exists(__DIR__ . '/env.php')) {
+    require __DIR__ . '/env.php';
+}
+if (!defined('APP_ENV')) {
+    define('APP_ENV', 'local');
+}
+if (!defined('APP_DEBUG')) {
+    define('APP_DEBUG', true);
+}
+if (!defined('APP_URL')) {
+    define('APP_URL', 'http://job-order-system');
+}
+
 define('APP_NAME', 'Job Order Management System');
 define('APP_TIMEZONE', 'Asia/Kuala_Lumpur');
-
-// Matches the Laragon auto-vhost for this project folder
-define('APP_URL', 'http://job-order-system');
 
 define('UPLOAD_MAX_SIZE_MB', 10);
 define('UPLOAD_ALLOWED_TYPES', ['pdf', 'jpg', 'jpeg', 'png']);

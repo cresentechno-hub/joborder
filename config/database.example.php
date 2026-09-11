@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
 
-// Laragon defaults: host 127.0.0.1, user root, empty password.
-// Edit these values if your local MySQL setup differs.
+// Copy this file to database.php (gitignored — never commit) and fill in
+// this environment's real credentials.
+
 return [
     'host'    => '127.0.0.1',
     'port'    => 3306,
