@@ -52,6 +52,9 @@
             <th class="sticky-col col-start">Start Date</th>
             <th class="sticky-col col-coverage">Coverage</th>
             <th class="sticky-col col-email">Customer Email</th>
+            <th class="sticky-col col-quotation-no">Quotation No</th>
+            <th class="sticky-col col-assigned-to">Assign To</th>
+            <th class="sticky-col col-contract-status">Status</th>
             <?php foreach ($months as $ym): ?>
               <th class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>"><?= e(lpr_month_label($ym)) ?></th>
             <?php endforeach; ?>
@@ -80,6 +83,9 @@
               <td class="sticky-col col-start"><?= e(format_date($c['start_date'])) ?></td>
               <td class="sticky-col col-coverage"><?= (int) $c['coverage_months'] ?>mo</td>
               <td class="sticky-col col-email"><?= e($c['customer_email'] ?? '') ?></td>
+              <td class="sticky-col col-quotation-no"><?= e($c['quotation_no'] ?? '') ?></td>
+              <td class="sticky-col col-assigned-to"><?= e($c['assigned_to_name'] ?? '') ?></td>
+              <td class="sticky-col col-contract-status"><?= e($c['contract_status'] ?? '') ?></td>
               <?php foreach ($months as $ym): ?>
                 <td class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>">
                   <?php if (in_array($ym, $c['covered_months'], true)): ?>

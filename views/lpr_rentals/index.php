@@ -52,6 +52,8 @@
             <th class="sticky-col col-start">Start Date</th>
             <th class="sticky-col col-coverage">Coverage</th>
             <th class="sticky-col col-email">Customer Email</th>
+            <th class="sticky-col col-quotation-no">Quotation No</th>
+            <th class="sticky-col col-rental-amount">Rental Amt</th>
             <?php foreach ($months as $ym): ?>
               <th class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>"><?= e(lpr_month_label($ym)) ?></th>
             <?php endforeach; ?>
@@ -60,7 +62,7 @@
         <tbody>
           <?php foreach ($groups as $partnerName => $rentalsInGroup): ?>
             <tr class="group-header-row">
-              <td class="sticky-col col-actions" colspan="5">Partner: <?= e($partnerName) ?></td>
+              <td class="sticky-col col-actions" colspan="7">Partner: <?= e($partnerName) ?></td>
               <?php foreach ($months as $ym): ?><td class="<?= $ym === $currentYm ? 'current-month' : '' ?>"></td><?php endforeach; ?>
             </tr>
             <?php foreach ($rentalsInGroup as $r): ?>
@@ -81,6 +83,8 @@
                 <td class="sticky-col col-start"><?= e(format_date($r['start_date'])) ?></td>
                 <td class="sticky-col col-coverage"><?= (int) $r['coverage_months'] ?>mo</td>
                 <td class="sticky-col col-email"><?= e($r['customer_email'] ?? '') ?></td>
+                <td class="sticky-col col-quotation-no"><?= e($r['quotation_no'] ?? '') ?></td>
+                <td class="sticky-col col-rental-amount"><?= $r['rental_amount'] !== null ? format_money((float) $r['rental_amount']) : '' ?></td>
                 <?php foreach ($months as $ym): ?>
                   <td class="month-col <?= $ym === $currentYm ? 'current-month' : '' ?>">
                     <?php if (in_array($ym, $r['covered_months'], true)): ?>

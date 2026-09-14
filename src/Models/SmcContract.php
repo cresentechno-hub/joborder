@@ -29,14 +29,15 @@ final class SmcContract
         return $row ?: null;
     }
 
-    /** All active contracts with customer/branch names, ordered for display by customer name then start date. */
+    /** All active contracts with customer/branch/assignee names, ordered for display by customer name then start date. */
     public static function allWithDetails(?int $customerId = null, ?int $branchId = null): array
     {
         $pdo = Database::getInstance();
-        $sql = 'SELECT sc.*, c.name AS customer_name, b.name AS branch_name
+        $sql = 'SELECT sc.*, c.name AS customer_name, b.name AS branch_name, u.full_name AS assigned_to_name
                 FROM smc_contracts sc
                 JOIN customers c ON c.id = sc.customer_id
                 JOIN branches b ON b.id = sc.branch_id
+                LEFT JOIN users u ON u.id = sc.assigned_to
                 WHERE sc.is_deleted = 0';
         $params = [];
         if ($customerId !== null) {
