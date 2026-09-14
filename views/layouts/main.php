@@ -27,34 +27,34 @@ $isActive = static fn (string $prefix): string =>
         </div>
       </div>
       <ul class="sidebar-nav">
-        <li><a href="/" class="<?= $isActive('/') ?>">Dashboard</a></li>
-        <li><a href="/job-orders" class="<?= $isActive('/job-orders') ?>">Job Orders</a></li>
+        <li><a href="/" class="<?= $isActive('/') ?>"><?= icon('layout-dashboard') ?> Dashboard</a></li>
+        <li><a href="/job-orders" class="<?= $isActive('/job-orders') ?>"><?= icon('briefcase') ?> Job Orders</a></li>
         <?php if (Auth::can('lpr_rental.view')): ?>
-          <li><a href="/lpr-rentals" class="<?= $isActive('/lpr-rentals') ?>">LPR Rental</a></li>
+          <li><a href="/lpr-rentals" class="<?= $isActive('/lpr-rentals') ?>"><?= icon('car') ?> LPR Rental</a></li>
         <?php endif; ?>
         <?php if (Auth::can('smc.view')): ?>
-          <li><a href="/smc" class="<?= $isActive('/smc') ?>">SMC</a></li>
+          <li><a href="/smc" class="<?= $isActive('/smc') ?>"><?= icon('building') ?> SMC</a></li>
         <?php endif; ?>
         <?php if (Auth::can('user.manage')): ?>
-          <li><a href="/users" class="<?= $isActive('/users') ?>">Users</a></li>
-          <li><a href="/branches" class="<?= $isActive('/branches') ?>">Branches</a></li>
+          <li><a href="/users" class="<?= $isActive('/users') ?>"><?= icon('users') ?> Users</a></li>
+          <li><a href="/branches" class="<?= $isActive('/branches') ?>"><?= icon('map-pin') ?> Branches</a></li>
         <?php endif; ?>
         <?php if (Auth::can('customer.manage')): ?>
-          <li><a href="/customers" class="<?= $isActive('/customers') ?>">Customers</a></li>
+          <li><a href="/customers" class="<?= $isActive('/customers') ?>"><?= icon('user') ?> Customers</a></li>
         <?php endif; ?>
         <?php if (Auth::can('lpr_partner.manage')): ?>
-          <li><a href="/lpr-partners" class="<?= $isActive('/lpr-partners') ?>">LPR Partners</a></li>
+          <li><a href="/lpr-partners" class="<?= $isActive('/lpr-partners') ?>"><?= icon('handshake') ?> LPR Partners</a></li>
         <?php endif; ?>
         <?php if (Auth::can('role.manage')): ?>
-          <li><a href="/roles" class="<?= $isActive('/roles') ?>">Roles</a></li>
+          <li><a href="/roles" class="<?= $isActive('/roles') ?>"><?= icon('shield') ?> Roles</a></li>
         <?php endif; ?>
         <?php if (Auth::can('settings.manage')): ?>
-          <li><a href="/settings" class="<?= $isActive('/settings') ?>">Settings</a></li>
+          <li><a href="/settings" class="<?= $isActive('/settings') ?>"><?= icon('settings') ?> Settings</a></li>
         <?php endif; ?>
         <?php if (Auth::can('activity_log.view')): ?>
-          <li><a href="/activity-log" class="<?= $isActive('/activity-log') ?>">Activity Log</a></li>
+          <li><a href="/activity-log" class="<?= $isActive('/activity-log') ?>"><?= icon('clock') ?> Activity Log</a></li>
         <?php endif; ?>
-        <li><a href="/help" class="<?= $isActive('/help') ?>">Help</a></li>
+        <li><a href="/help" class="<?= $isActive('/help') ?>"><?= icon('help-circle') ?> Help</a></li>
       </ul>
     </aside>
     <div class="sidebar-overlay"></div>
@@ -66,10 +66,7 @@ $isActive = static fn (string $prefix): string =>
 
         <div class="notif-bell-wrap">
           <button type="button" id="notif-bell-btn" class="notif-bell-btn" aria-label="Notifications">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
+            <?= icon('bell') ?>
             <?php if ($unreadCount > 0): ?>
               <span class="notif-bell-badge"><?= $unreadCount > 99 ? '99+' : $unreadCount ?></span>
             <?php endif; ?>
@@ -103,7 +100,7 @@ $isActive = static fn (string $prefix): string =>
         <span><?= e($currentUser['full_name'] ?? '') ?> &middot; <?= e($currentUser['role_name'] ?? '') ?></span>
         <form method="POST" action="/logout" style="margin:0;">
           <?= csrf_field() ?>
-          <button type="submit" class="btn btn-outline">Logout</button>
+          <button type="submit" class="btn btn-outline btn-sm"><?= icon('log-out') ?> Logout</button>
         </form>
       </header>
       <main class="content">

@@ -1,7 +1,7 @@
 <?php $error = flash('error'); ?>
 
 <?php if ($error): ?>
-  <div class="alert alert-error"><?= e($error) ?></div>
+  <div class="alert alert-error"><?= icon('alert-circle') ?> <?= e($error) ?></div>
 <?php endif; ?>
 
 <form method="POST" action="/login">
