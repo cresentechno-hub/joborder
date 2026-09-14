@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\LprPartner;
 use App\Models\LprRental;
+use App\Services\FileUploadService;
 use DateTime;
 use Throwable;
 
@@ -95,8 +96,24 @@ final class LprRentalController extends Controller
             'start_date'      => $input['start_date'],
             'coverage_months' => (int) $input['coverage_months'],
             'customer_email'  => trim((string) ($input['customer_email'] ?? '')) ?: null,
+            'quotation_no'    => trim((string) ($input['quotation_no'] ?? '')) ?: null,
+            'rental_amount'   => trim((string) ($input['rental_amount'] ?? '')) !== '' ? (float) $input['rental_amount'] : null,
+            'detail'          => trim((string) ($input['detail'] ?? '')) ?: null,
+            'e_invoice'       => trim((string) ($input['e_invoice'] ?? '')) ?: null,
             'created_by'      => Auth::id(),
         ]);
+
+        // Contract file scoping key is this row's own id, only known now
+        // that create() has run — see lpr_rental_upload_dir() in helpers.php.
+        if (!empty($_FILES['contract_file']['name'])) {
+            try {
+                $contract = FileUploadService::upload($_FILES['contract_file'], lpr_rental_upload_dir($id, 'contract'));
+                LprRental::updateContractFile($id, lpr_rental_upload_rel($id, 'contract') . '/' . $contract['stored_name'], $contract['original_name']);
+            } catch (Throwable $e) {
+                flash('error', 'Contract created, but the file upload failed: ' . $e->getMessage());
+                $this->redirect("/lpr-rentals/{$id}/edit");
+            }
+        }
 
         ActivityLog::record(Auth::id(), 'lpr_rental.create', 'lpr_rental', $id);
         flash('success', 'LPR rental contract created successfully.');
@@ -152,8 +169,22 @@ final class LprRentalController extends Controller
             'start_date'      => $input['start_date'],
             'coverage_months' => (int) $input['coverage_months'],
             'customer_email'  => trim((string) ($input['customer_email'] ?? '')) ?: null,
+            'quotation_no'    => trim((string) ($input['quotation_no'] ?? '')) ?: null,
+            'rental_amount'   => trim((string) ($input['rental_amount'] ?? '')) !== '' ? (float) $input['rental_amount'] : null,
+            'detail'          => trim((string) ($input['detail'] ?? '')) ?: null,
+            'e_invoice'       => trim((string) ($input['e_invoice'] ?? '')) ?: null,
             'updated_by'      => Auth::id(),
         ]);
+
+        if (!empty($_FILES['contract_file']['name'])) {
+            try {
+                $contract = FileUploadService::upload($_FILES['contract_file'], lpr_rental_upload_dir($id, 'contract'));
+                LprRental::updateContractFile($id, lpr_rental_upload_rel($id, 'contract') . '/' . $contract['stored_name'], $contract['original_name']);
+            } catch (Throwable $e) {
+                flash('error', 'Contract updated, but the file upload failed: ' . $e->getMessage());
+                $this->redirect("/lpr-rentals/{$id}/edit");
+            }
+        }
 
         ActivityLog::record(Auth::id(), 'lpr_rental.update', 'lpr_rental', $id);
         flash('success', 'LPR rental contract updated successfully.');
@@ -467,6 +498,11 @@ final class LprRentalController extends Controller
         $email = trim((string) ($input['customer_email'] ?? ''));
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors['customer_email'] = 'Please enter a valid email address.';
+        }
+
+        $rentalAmount = trim((string) ($input['rental_amount'] ?? ''));
+        if ($rentalAmount !== '' && !is_numeric($rentalAmount)) {
+            $errors['rental_amount'] = 'Rental amount must be a number.';
         }
 
         return $errors;

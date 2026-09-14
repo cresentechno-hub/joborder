@@ -321,10 +321,16 @@ CREATE TABLE `lpr_rentals` (
   `id`              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `customer_id`     INT UNSIGNED NOT NULL,
   `partner_id`      INT UNSIGNED NOT NULL,
+  `quotation_no`    VARCHAR(100) NULL,
+  `rental_amount`   DECIMAL(10,2) NULL,
   `branch_id`       INT UNSIGNED NOT NULL,
   `start_date`      DATE NOT NULL,
   `coverage_months` TINYINT UNSIGNED NOT NULL COMMENT '12/24/36/48',
   `customer_email`  VARCHAR(150) NULL,
+  `detail`          TEXT NULL,
+  `e_invoice`       VARCHAR(100) NULL,
+  `contract_file_path`           VARCHAR(255) NULL,
+  `contract_file_original_name`  VARCHAR(255) NULL,
   `renewal_reminder_sent_at` DATETIME NULL COMMENT 'NULL = not yet emailed for the current coverage period; reset on every edit',
   `is_deleted`      TINYINT(1) NOT NULL DEFAULT 0,
   `created_by`      BIGINT UNSIGNED NOT NULL,
@@ -368,9 +374,20 @@ CREATE TABLE `smc_contracts` (
   `id`              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `customer_id`     INT UNSIGNED NOT NULL,
   `branch_id`       INT UNSIGNED NOT NULL,
+  `assigned_to`     BIGINT UNSIGNED NULL COMMENT 'single person responsible for servicing this contract — unlike job_orders, no multi-assignee list',
+  `quotation_no`    VARCHAR(100) NULL,
+  `short_name`      VARCHAR(100) NULL,
+  `site`            VARCHAR(255) NULL,
+  `service_frequency` VARCHAR(50) NULL COMMENT 'e.g. Monthly/Quarterly — free text',
+  `service_date`    DATE NULL,
   `start_date`      DATE NOT NULL,
   `coverage_months` TINYINT UNSIGNED NOT NULL COMMENT '12/24/36/48',
   `customer_email`  VARCHAR(150) NULL,
+  `payment_term`    VARCHAR(50) NULL,
+  `contract_status` VARCHAR(50) NULL COMMENT 'contract-level status — distinct from the per-month SCH/DONE grid in smc_contract_statuses',
+  `description`     TEXT NULL,
+  `contract_file_path`           VARCHAR(255) NULL,
+  `contract_file_original_name`  VARCHAR(255) NULL,
   `renewal_reminder_sent_at` DATETIME NULL COMMENT 'NULL = not yet emailed for the current coverage period; reset on every edit',
   `is_deleted`      TINYINT(1) NOT NULL DEFAULT 0,
   `created_by`      BIGINT UNSIGNED NOT NULL,
@@ -382,8 +399,22 @@ CREATE TABLE `smc_contracts` (
   KEY `idx_smc_contracts_deleted` (`is_deleted`),
   CONSTRAINT `fk_smc_contracts_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_smc_contracts_branch` FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_smc_contracts_assigned_to` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_smc_contracts_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_smc_contracts_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 10h. smc_contract_cc (optional "CC To" list per contract — same
+--      pattern as job_order_comment_cc, purely additive junction table)
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `smc_contract_cc`;
+CREATE TABLE `smc_contract_cc` (
+  `contract_id` BIGINT UNSIGNED NOT NULL,
+  `user_id`     BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`contract_id`, `user_id`),
+  CONSTRAINT `fk_smc_cc_contract` FOREIGN KEY (`contract_id`) REFERENCES `smc_contracts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_smc_cc_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------

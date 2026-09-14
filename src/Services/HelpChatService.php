@@ -111,7 +111,10 @@ final class HelpChatService
         month (header YYYY-MM) with 1/0 or Yes/No. A row is matched to an
         existing contract by Partner + Customer + Start Date; unmatched
         rows create a new contract, and unrecognized Partner/Customer
-        names are added automatically.
+        names are added automatically. The Create/Edit form also has
+        optional fields not on the listing or the CSV: Quotation No,
+        Rental Amount, Detail, E-Invoice, and a Contract File attachment
+        (upload the signed contract PDF/image directly on the contract).
 
         === SMC module ===
         Tracks monthly schedule status for SMC contracts: Blank / SCH
@@ -125,7 +128,13 @@ final class HelpChatService
         one column per covered month (header YYYY-MM) with Blank/SCH/DONE.
         A row is matched to an existing contract by Customer + Start Date;
         unmatched rows create a new contract, and unrecognized Customer
-        names are added automatically.
+        names are added automatically. The Create/Edit form also has
+        optional fields not on the listing or the CSV: Assign To (one
+        person responsible for servicing the contract), CC To (multiple
+        people to keep in the loop), Quotation No, Short Name, Site,
+        Service Frequency, Service Date, Payment Term, Contract Status
+        (the contract's own status — separate from each month's
+        Blank/SCH/DONE), Description, and a Contract File attachment.
 
         === Customers module ===
         Shared customer master list referenced by the Customer dropdown

@@ -120,7 +120,7 @@ final class SmcContract
     }
 
     /**
-     * @param array{customer_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, created_by:int} $data
+     * @param array{customer_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, assigned_to:?int, quotation_no:?string, short_name:?string, site:?string, service_frequency:?string, service_date:?string, payment_term:?string, contract_status:?string, description:?string, created_by:int} $data
      */
     public static function create(array $data): int
     {
@@ -128,16 +128,29 @@ final class SmcContract
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare(
-                'INSERT INTO smc_contracts (customer_id, branch_id, start_date, coverage_months, customer_email, created_by)
-                 VALUES (:customer_id, :branch_id, :start_date, :coverage_months, :customer_email, :created_by)'
+                'INSERT INTO smc_contracts (customer_id, branch_id, start_date, coverage_months, customer_email,
+                        assigned_to, quotation_no, short_name, site, service_frequency, service_date,
+                        payment_term, contract_status, description, created_by)
+                 VALUES (:customer_id, :branch_id, :start_date, :coverage_months, :customer_email,
+                        :assigned_to, :quotation_no, :short_name, :site, :service_frequency, :service_date,
+                        :payment_term, :contract_status, :description, :created_by)'
             );
             $stmt->execute([
-                'customer_id'     => $data['customer_id'],
-                'branch_id'       => $data['branch_id'],
-                'start_date'      => $data['start_date'],
-                'coverage_months' => $data['coverage_months'],
-                'customer_email'  => $data['customer_email'] ?? null,
-                'created_by'      => $data['created_by'],
+                'customer_id'       => $data['customer_id'],
+                'branch_id'         => $data['branch_id'],
+                'start_date'        => $data['start_date'],
+                'coverage_months'   => $data['coverage_months'],
+                'customer_email'    => $data['customer_email'] ?? null,
+                'assigned_to'       => $data['assigned_to'] ?? null,
+                'quotation_no'      => $data['quotation_no'] ?? null,
+                'short_name'        => $data['short_name'] ?? null,
+                'site'              => $data['site'] ?? null,
+                'service_frequency' => $data['service_frequency'] ?? null,
+                'service_date'      => $data['service_date'] ?? null,
+                'payment_term'      => $data['payment_term'] ?? null,
+                'contract_status'   => $data['contract_status'] ?? null,
+                'description'       => $data['description'] ?? null,
+                'created_by'        => $data['created_by'],
             ]);
 
             $id = (int) $pdo->lastInsertId();
@@ -151,7 +164,7 @@ final class SmcContract
         }
     }
 
-    /** @param array{customer_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, updated_by:int} $data */
+    /** @param array{customer_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, assigned_to:?int, quotation_no:?string, short_name:?string, site:?string, service_frequency:?string, service_date:?string, payment_term:?string, contract_status:?string, description:?string, updated_by:int} $data */
     public static function update(int $id, array $data): void
     {
         $pdo = Database::getInstance();
@@ -160,18 +173,31 @@ final class SmcContract
             $stmt = $pdo->prepare(
                 'UPDATE smc_contracts SET customer_id = :customer_id, branch_id = :branch_id,
                         start_date = :start_date, coverage_months = :coverage_months,
-                        customer_email = :customer_email, updated_by = :updated_by,
+                        customer_email = :customer_email, assigned_to = :assigned_to,
+                        quotation_no = :quotation_no, short_name = :short_name, site = :site,
+                        service_frequency = :service_frequency, service_date = :service_date,
+                        payment_term = :payment_term, contract_status = :contract_status,
+                        description = :description, updated_by = :updated_by,
                         renewal_reminder_sent_at = NULL
                  WHERE id = :id AND is_deleted = 0'
             );
             $stmt->execute([
-                'id'              => $id,
-                'customer_id'     => $data['customer_id'],
-                'branch_id'       => $data['branch_id'],
-                'start_date'      => $data['start_date'],
-                'coverage_months' => $data['coverage_months'],
-                'customer_email'  => $data['customer_email'] ?? null,
-                'updated_by'      => $data['updated_by'],
+                'id'                => $id,
+                'customer_id'       => $data['customer_id'],
+                'branch_id'         => $data['branch_id'],
+                'start_date'        => $data['start_date'],
+                'coverage_months'   => $data['coverage_months'],
+                'customer_email'    => $data['customer_email'] ?? null,
+                'assigned_to'       => $data['assigned_to'] ?? null,
+                'quotation_no'      => $data['quotation_no'] ?? null,
+                'short_name'        => $data['short_name'] ?? null,
+                'site'              => $data['site'] ?? null,
+                'service_frequency' => $data['service_frequency'] ?? null,
+                'service_date'      => $data['service_date'] ?? null,
+                'payment_term'      => $data['payment_term'] ?? null,
+                'contract_status'   => $data['contract_status'] ?? null,
+                'description'       => $data['description'] ?? null,
+                'updated_by'        => $data['updated_by'],
             ]);
 
             self::syncStatusRows($id, $data['start_date'], (int) $data['coverage_months']);
@@ -181,6 +207,45 @@ final class SmcContract
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    /** Sets/replaces the uploaded contract file's path — a separate update since the file scoping key is the row's own id, only known after create(). */
+    public static function updateContractFile(int $id, string $path, string $originalName): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('UPDATE smc_contracts SET contract_file_path = :path, contract_file_original_name = :name WHERE id = :id');
+        $stmt->execute(['path' => $path, 'name' => $originalName, 'id' => $id]);
+    }
+
+    /** @return int[] */
+    public static function getCcUserIds(int $contractId): array
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('SELECT user_id FROM smc_contract_cc WHERE contract_id = :id');
+        $stmt->execute(['id' => $contractId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    /** @param int[] $userIds */
+    public static function attachCcUsers(int $contractId, array $userIds): void
+    {
+        if (empty($userIds)) {
+            return;
+        }
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('INSERT IGNORE INTO smc_contract_cc (contract_id, user_id) VALUES (:contract_id, :user_id)');
+        foreach (array_unique($userIds) as $userId) {
+            $stmt->execute(['contract_id' => $contractId, 'user_id' => $userId]);
+        }
+    }
+
+    /** Replaces the entire CC list for a contract (used on edit — attachCcUsers alone would never remove a deselected user). */
+    public static function replaceCcUsers(int $contractId, array $userIds): void
+    {
+        $pdo = Database::getInstance();
+        $del = $pdo->prepare('DELETE FROM smc_contract_cc WHERE contract_id = :id');
+        $del->execute(['id' => $contractId]);
+        self::attachCcUsers($contractId, $userIds);
     }
 
     /**

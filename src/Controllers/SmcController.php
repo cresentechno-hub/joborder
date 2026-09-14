@@ -11,6 +11,8 @@ use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\SmcContract;
+use App\Models\User;
+use App\Services\FileUploadService;
 use DateTime;
 use Throwable;
 
@@ -82,13 +84,37 @@ final class SmcController extends Controller
         }
 
         $id = SmcContract::create([
-            'customer_id'     => (int) $input['customer_id'],
-            'branch_id'       => $branchId,
-            'start_date'      => $input['start_date'],
-            'coverage_months' => (int) $input['coverage_months'],
-            'customer_email'  => trim((string) ($input['customer_email'] ?? '')) ?: null,
-            'created_by'      => Auth::id(),
+            'customer_id'       => (int) $input['customer_id'],
+            'branch_id'         => $branchId,
+            'start_date'        => $input['start_date'],
+            'coverage_months'   => (int) $input['coverage_months'],
+            'customer_email'    => trim((string) ($input['customer_email'] ?? '')) ?: null,
+            'assigned_to'       => trim((string) ($input['assigned_to'] ?? '')) !== '' ? (int) $input['assigned_to'] : null,
+            'quotation_no'      => trim((string) ($input['quotation_no'] ?? '')) ?: null,
+            'short_name'        => trim((string) ($input['short_name'] ?? '')) ?: null,
+            'site'              => trim((string) ($input['site'] ?? '')) ?: null,
+            'service_frequency' => trim((string) ($input['service_frequency'] ?? '')) ?: null,
+            'service_date'      => trim((string) ($input['service_date'] ?? '')) ?: null,
+            'payment_term'      => trim((string) ($input['payment_term'] ?? '')) ?: null,
+            'contract_status'   => trim((string) ($input['contract_status'] ?? '')) ?: null,
+            'description'       => trim((string) ($input['description'] ?? '')) ?: null,
+            'created_by'        => Auth::id(),
         ]);
+
+        $ccUserIds = array_filter(array_map('intval', (array) ($input['cc_users'] ?? [])));
+        SmcContract::attachCcUsers($id, $ccUserIds);
+
+        // Contract file scoping key is this row's own id, only known now
+        // that create() has run — see smc_contract_upload_dir() in helpers.php.
+        if (!empty($_FILES['contract_file']['name'])) {
+            try {
+                $contract = FileUploadService::upload($_FILES['contract_file'], smc_contract_upload_dir($id, 'contract'));
+                SmcContract::updateContractFile($id, smc_contract_upload_rel($id, 'contract') . '/' . $contract['stored_name'], $contract['original_name']);
+            } catch (Throwable $e) {
+                flash('error', 'Contract created, but the file upload failed: ' . $e->getMessage());
+                $this->redirect("/smc/{$id}/edit");
+            }
+        }
 
         ActivityLog::record(Auth::id(), 'smc.create', 'smc_contract', $id);
         flash('success', 'SMC contract created successfully.');
@@ -103,7 +129,10 @@ final class SmcController extends Controller
         }
         $this->assertBranchAccess($contract);
 
-        $this->view('smc/edit', array_merge(['contract' => $contract], $this->formContext()));
+        $this->view('smc/edit', array_merge(
+            ['contract' => $contract, 'selectedCc' => SmcContract::getCcUserIds((int) $contract['id'])],
+            $this->formContext()
+        ));
     }
 
     public function update(array $params): void
@@ -138,13 +167,35 @@ final class SmcController extends Controller
         }
 
         SmcContract::update($id, [
-            'customer_id'     => (int) $input['customer_id'],
-            'branch_id'       => $branchId,
-            'start_date'      => $input['start_date'],
-            'coverage_months' => (int) $input['coverage_months'],
-            'customer_email'  => trim((string) ($input['customer_email'] ?? '')) ?: null,
-            'updated_by'      => Auth::id(),
+            'customer_id'       => (int) $input['customer_id'],
+            'branch_id'         => $branchId,
+            'start_date'        => $input['start_date'],
+            'coverage_months'   => (int) $input['coverage_months'],
+            'customer_email'    => trim((string) ($input['customer_email'] ?? '')) ?: null,
+            'assigned_to'       => trim((string) ($input['assigned_to'] ?? '')) !== '' ? (int) $input['assigned_to'] : null,
+            'quotation_no'      => trim((string) ($input['quotation_no'] ?? '')) ?: null,
+            'short_name'        => trim((string) ($input['short_name'] ?? '')) ?: null,
+            'site'              => trim((string) ($input['site'] ?? '')) ?: null,
+            'service_frequency' => trim((string) ($input['service_frequency'] ?? '')) ?: null,
+            'service_date'      => trim((string) ($input['service_date'] ?? '')) ?: null,
+            'payment_term'      => trim((string) ($input['payment_term'] ?? '')) ?: null,
+            'contract_status'   => trim((string) ($input['contract_status'] ?? '')) ?: null,
+            'description'       => trim((string) ($input['description'] ?? '')) ?: null,
+            'updated_by'        => Auth::id(),
         ]);
+
+        $ccUserIds = array_filter(array_map('intval', (array) ($input['cc_users'] ?? [])));
+        SmcContract::replaceCcUsers($id, $ccUserIds);
+
+        if (!empty($_FILES['contract_file']['name'])) {
+            try {
+                $contract = FileUploadService::upload($_FILES['contract_file'], smc_contract_upload_dir($id, 'contract'));
+                SmcContract::updateContractFile($id, smc_contract_upload_rel($id, 'contract') . '/' . $contract['stored_name'], $contract['original_name']);
+            } catch (Throwable $e) {
+                flash('error', 'Contract updated, but the file upload failed: ' . $e->getMessage());
+                $this->redirect("/smc/{$id}/edit");
+            }
+        }
 
         ActivityLog::record(Auth::id(), 'smc.update', 'smc_contract', $id);
         flash('success', 'SMC contract updated successfully.');
@@ -400,6 +451,7 @@ final class SmcController extends Controller
 
         return [
             'customers'       => Customer::allActive(),
+            'users'           => User::allActive(),
             'coverageOptions' => self::COVERAGE_OPTIONS,
             'canSelectBranch' => Auth::can('data.view_all_branches'),
             'branches'        => Auth::can('data.view_all_branches') ? Branch::allActive() : [],
@@ -455,6 +507,16 @@ final class SmcController extends Controller
         $email = trim((string) ($input['customer_email'] ?? ''));
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors['customer_email'] = 'Please enter a valid email address.';
+        }
+
+        $serviceDate = trim((string) ($input['service_date'] ?? ''));
+        if ($serviceDate !== '' && !DateTime::createFromFormat('Y-m-d', $serviceDate)) {
+            $errors['service_date'] = 'Please enter a valid service date.';
+        }
+
+        $assignedTo = trim((string) ($input['assigned_to'] ?? ''));
+        if ($assignedTo !== '' && !User::findById((int) $assignedTo)) {
+            $errors['assigned_to'] = 'Please select a valid user.';
         }
 
         return $errors;

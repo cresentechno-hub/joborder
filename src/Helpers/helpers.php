@@ -142,6 +142,34 @@ function job_order_upload_rel(string $quotationNo, string $category): string
 }
 
 /**
+ * Same shape as job_order_upload_dir()/job_order_upload_rel(), but scoped
+ * by numeric id instead of a quotation-no-style text key — neither
+ * lpr_rentals nor smc_contracts has a natural unique text field to fold
+ * into the folder name, so the row's own id is used once it exists
+ * (meaning a contract file upload at create time is necessarily a
+ * two-step sequence: insert the row, then upload/update the path).
+ */
+function lpr_rental_upload_dir(int $id, string $category): string
+{
+    return UPLOAD_BASE_DIR . '/lpr-rentals/' . $id . '/' . $category;
+}
+
+function lpr_rental_upload_rel(int $id, string $category): string
+{
+    return UPLOAD_BASE_REL . '/lpr-rentals/' . $id . '/' . $category;
+}
+
+function smc_contract_upload_dir(int $id, string $category): string
+{
+    return UPLOAD_BASE_DIR . '/smc-contracts/' . $id . '/' . $category;
+}
+
+function smc_contract_upload_rel(int $id, string $category): string
+{
+    return UPLOAD_BASE_REL . '/smc-contracts/' . $id . '/' . $category;
+}
+
+/**
  * Renders a sortable column header link for a paginated table: clicking it
  * sets sort=$column (toggling dir=asc/desc on repeat clicks of the same
  * column) while preserving every other filter already in $currentQuery,

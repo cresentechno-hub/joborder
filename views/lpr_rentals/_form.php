@@ -3,7 +3,7 @@
 /**
  * Shared create/edit form. Expects: $mode ('create'|'edit'), $customers,
  * $partners, $coverageOptions, $canSelectBranch, $branches, $myBranchId,
- * and $rental (array, edit only).
+ * $myBranchName, and $rental (array, edit only).
  */
 
 $errors = form_errors();
@@ -21,7 +21,7 @@ $isEdit = $mode === 'edit';
   </div>
 <?php endif; ?>
 
-<form method="POST" action="<?= $isEdit ? '/lpr-rentals/' . (int) $rental['id'] : '/lpr-rentals' ?>">
+<form method="POST" action="<?= $isEdit ? '/lpr-rentals/' . (int) $rental['id'] : '/lpr-rentals' ?>" enctype="multipart/form-data">
   <?= csrf_field() ?>
 
   <div class="form-row">
@@ -77,11 +77,47 @@ $isEdit = $mode === 'edit';
     </div>
   </div>
 
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label" for="quotation_no">Quotation No (optional)</label>
+      <input class="form-control" type="text" id="quotation_no" name="quotation_no"
+             value="<?= old('quotation_no', e($rental['quotation_no'] ?? '')) ?>">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="rental_amount">Rental Amount (RM, optional)</label>
+      <input class="form-control" type="number" step="0.01" min="0" id="rental_amount" name="rental_amount"
+             value="<?= old('rental_amount', e((string) ($rental['rental_amount'] ?? ''))) ?>">
+    </div>
+  </div>
+
   <div class="form-group">
     <label class="form-label" for="customer_email">Customer Email (optional)</label>
     <input class="form-control" type="email" id="customer_email" name="customer_email"
            value="<?= old('customer_email', e($rental['customer_email'] ?? '')) ?>"
            placeholder="e.g. accounts@customer.com">
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label" for="detail">Detail (optional)</label>
+      <textarea class="form-control" id="detail" name="detail" rows="3"><?= old('detail', e($rental['detail'] ?? '')) ?></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="e_invoice">E-Invoice (optional)</label>
+      <input class="form-control" type="text" id="e_invoice" name="e_invoice"
+             value="<?= old('e_invoice', e($rental['e_invoice'] ?? '')) ?>">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="contract_file">Contract File (optional)</label>
+    <?php if ($isEdit && !empty($rental['contract_file_path'])): ?>
+      <div style="margin-bottom:6px; font-size:12px;">
+        Current: <a href="/<?= e($rental['contract_file_path']) ?>" target="_blank" rel="noopener"><?= e($rental['contract_file_original_name'] ?? 'view file') ?></a>
+        <span style="color:var(--color-text-muted);">(upload a new file to replace)</span>
+      </div>
+    <?php endif; ?>
+    <input class="form-control" type="file" id="contract_file" name="contract_file" accept="<?= e(upload_accept_attr()) ?>">
   </div>
 
   <div class="form-group">

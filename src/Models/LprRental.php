@@ -118,7 +118,7 @@ final class LprRental
     }
 
     /**
-     * @param array{customer_id:int, partner_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, created_by:int} $data
+     * @param array{customer_id:int, partner_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, quotation_no:?string, rental_amount:?float, detail:?string, e_invoice:?string, created_by:int} $data
      */
     public static function create(array $data): int
     {
@@ -126,8 +126,8 @@ final class LprRental
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare(
-                'INSERT INTO lpr_rentals (customer_id, partner_id, branch_id, start_date, coverage_months, customer_email, created_by)
-                 VALUES (:customer_id, :partner_id, :branch_id, :start_date, :coverage_months, :customer_email, :created_by)'
+                'INSERT INTO lpr_rentals (customer_id, partner_id, branch_id, start_date, coverage_months, customer_email, quotation_no, rental_amount, detail, e_invoice, created_by)
+                 VALUES (:customer_id, :partner_id, :branch_id, :start_date, :coverage_months, :customer_email, :quotation_no, :rental_amount, :detail, :e_invoice, :created_by)'
             );
             $stmt->execute([
                 'customer_id'     => $data['customer_id'],
@@ -136,6 +136,10 @@ final class LprRental
                 'start_date'      => $data['start_date'],
                 'coverage_months' => $data['coverage_months'],
                 'customer_email'  => $data['customer_email'] ?? null,
+                'quotation_no'    => $data['quotation_no'] ?? null,
+                'rental_amount'   => $data['rental_amount'] ?? null,
+                'detail'          => $data['detail'] ?? null,
+                'e_invoice'       => $data['e_invoice'] ?? null,
                 'created_by'      => $data['created_by'],
             ]);
 
@@ -150,7 +154,7 @@ final class LprRental
         }
     }
 
-    /** @param array{customer_id:int, partner_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, updated_by:int} $data */
+    /** @param array{customer_id:int, partner_id:int, branch_id:int, start_date:string, coverage_months:int, customer_email:?string, quotation_no:?string, rental_amount:?float, detail:?string, e_invoice:?string, updated_by:int} $data */
     public static function update(int $id, array $data): void
     {
         $pdo = Database::getInstance();
@@ -159,8 +163,9 @@ final class LprRental
             $stmt = $pdo->prepare(
                 'UPDATE lpr_rentals SET customer_id = :customer_id, partner_id = :partner_id, branch_id = :branch_id,
                         start_date = :start_date, coverage_months = :coverage_months,
-                        customer_email = :customer_email, updated_by = :updated_by,
-                        renewal_reminder_sent_at = NULL
+                        customer_email = :customer_email, quotation_no = :quotation_no,
+                        rental_amount = :rental_amount, detail = :detail, e_invoice = :e_invoice,
+                        updated_by = :updated_by, renewal_reminder_sent_at = NULL
                  WHERE id = :id AND is_deleted = 0'
             );
             $stmt->execute([
@@ -171,6 +176,10 @@ final class LprRental
                 'start_date'      => $data['start_date'],
                 'coverage_months' => $data['coverage_months'],
                 'customer_email'  => $data['customer_email'] ?? null,
+                'quotation_no'    => $data['quotation_no'] ?? null,
+                'rental_amount'   => $data['rental_amount'] ?? null,
+                'detail'          => $data['detail'] ?? null,
+                'e_invoice'       => $data['e_invoice'] ?? null,
                 'updated_by'      => $data['updated_by'],
             ]);
 
@@ -181,6 +190,14 @@ final class LprRental
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    /** Sets/replaces the uploaded contract file's path — a separate update since the file scoping key is the row's own id, only known after create(). */
+    public static function updateContractFile(int $id, string $path, string $originalName): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('UPDATE lpr_rentals SET contract_file_path = :path, contract_file_original_name = :name WHERE id = :id');
+        $stmt->execute(['path' => $path, 'name' => $originalName, 'id' => $id]);
     }
 
     /**

@@ -163,7 +163,10 @@
     checked months. Customer and Partner names come from the <strong>Customers</strong> and
     <strong>LPR Partners</strong> maintenance lists - add a new one there if it's not in the dropdown yet. Each
     contract belongs to one <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at
-    their own branch, and new contracts are locked to it automatically.
+    their own branch, and new contracts are locked to it automatically. The Create/Edit form also has optional
+    fields not shown on the listing or the CSV template below: <strong>Quotation No</strong>,
+    <strong>Rental Amount</strong>, <strong>Detail</strong>, <strong>E-Invoice</strong>, and a
+    <strong>Contract File</strong> attachment (upload the signed contract PDF/image directly on the contract).
   </p>
   <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
   <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Partner,Customer,Start Date,Coverage Months,Customer Email,2026-09,2026-10,...
@@ -189,7 +192,13 @@ Weilong,Eastern Oriental Hotel,2026-03-01,36,contact@eoh.com,1,0,...</pre>
     or bulk-load contracts and their monthly statuses. Customer names come from the <strong>Customers</strong>
     maintenance list - add a new one there if it's not in the dropdown yet. Each contract belongs to one
     <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at their own branch, and new
-    contracts are locked to it automatically.
+    contracts are locked to it automatically. The Create/Edit form also has optional fields not shown on the
+    listing or the CSV template below: <strong>Assign To</strong> (one person responsible for servicing the
+    contract), <strong>CC To</strong> (multiple people to keep in the loop), <strong>Quotation No</strong>,
+    <strong>Short Name</strong>, <strong>Site</strong>, <strong>Service Frequency</strong>,
+    <strong>Service Date</strong>, <strong>Payment Term</strong>, <strong>Contract Status</strong> (the contract's
+    own status - separate from each month's Blank/SCH/DONE), <strong>Description</strong>, and a
+    <strong>Contract File</strong> attachment.
   </p>
   <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
   <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Customer,Start Date,Coverage Months,Customer Email,2026-09,2026-10,...
