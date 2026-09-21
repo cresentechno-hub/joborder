@@ -9,6 +9,7 @@ use App\Core\Controller;
 use App\Core\JobOrderAccessGuard;
 use App\Models\ActivityLog;
 use App\Models\Branch;
+use App\Models\Customer;
 use App\Models\JobOrder;
 use App\Models\JobOrderComment;
 use App\Models\JobOrderDocument;
@@ -161,6 +162,8 @@ final class JobOrderController extends Controller
             }
         }
 
+        Customer::findOrCreateByName(trim($input['customer_name']));
+
         $id = JobOrder::create([
             'quotation_no'                  => $quotationNo,
             'customer_name'                 => trim($input['customer_name']),
@@ -279,6 +282,7 @@ final class JobOrderController extends Controller
             'canSelectBranch' => $canSelectBranch,
             'myBranchId'      => $myBranchId,
             'myBranchName'    => $myBranch['name'] ?? null,
+            'customers'       => Customer::allActive(),
         ];
     }
 
@@ -331,6 +335,8 @@ final class JobOrderController extends Controller
         // (and the existing quotation/PO paths, if not replaced) land
         // under the correct, current folder name.
         $this->renameFolderIfQuotationNoChanged($id, $jobOrder['quotation_no'], $newQuotationNo);
+
+        Customer::findOrCreateByName(trim($input['customer_name']));
 
         $data = [
             'quotation_no'   => $newQuotationNo,

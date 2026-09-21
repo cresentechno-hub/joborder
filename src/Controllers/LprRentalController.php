@@ -90,7 +90,7 @@ final class LprRentalController extends Controller
         }
 
         $id = LprRental::create([
-            'customer_id'     => (int) $input['customer_id'],
+            'customer_id'     => Customer::findOrCreateByName(trim($input['customer_name'])),
             'partner_id'      => (int) $input['partner_id'],
             'branch_id'       => $branchId,
             'start_date'      => $input['start_date'],
@@ -163,7 +163,7 @@ final class LprRentalController extends Controller
         }
 
         LprRental::update($id, [
-            'customer_id'     => (int) $input['customer_id'],
+            'customer_id'     => Customer::findOrCreateByName(trim($input['customer_name'])),
             'partner_id'      => (int) $input['partner_id'],
             'branch_id'       => $branchId,
             'start_date'      => $input['start_date'],
@@ -479,8 +479,8 @@ final class LprRentalController extends Controller
     {
         $errors = [];
 
-        if (empty($input['customer_id']) || !Customer::findById((int) $input['customer_id'])) {
-            $errors['customer_id'] = 'Please select a valid customer.';
+        if (trim((string) ($input['customer_name'] ?? '')) === '') {
+            $errors['customer_name'] = 'Customer is required.';
         }
 
         if (empty($input['partner_id']) || !LprPartner::findById((int) $input['partner_id'])) {

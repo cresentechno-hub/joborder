@@ -26,18 +26,17 @@ $isEdit = $mode === 'edit';
   <?= csrf_field() ?>
 
   <div class="form-group">
-    <label class="form-label" for="customer_id">Customer</label>
-    <select class="form-control" id="customer_id" name="customer_id" required>
-      <option value="">-- Select Customer --</option>
-      <?php $selectedCustomer = old('customer_id', (string) ($contract['customer_id'] ?? '')); ?>
+    <label class="form-label" for="customer_name">Customer</label>
+    <input class="form-control" type="text" id="customer_name" name="customer_name" list="customer-options"
+           value="<?= old('customer_name', e($contract['customer_name'] ?? '')) ?>"
+           placeholder="Type a customer name" required>
+    <datalist id="customer-options">
       <?php foreach ($customers as $c): ?>
-        <option value="<?= (int) $c['id'] ?>" <?= $selectedCustomer === (string) $c['id'] ? 'selected' : '' ?>>
-          <?= e($c['name']) ?>
-        </option>
+        <option value="<?= e($c['name']) ?>">
       <?php endforeach; ?>
-    </select>
+    </datalist>
     <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
-      Not listed? <a href="/customers/create" target="_blank" rel="noopener">Add a new customer</a> then refresh this page.
+      Pick an existing name from the suggestions, or type a new one — it'll be added to Customers automatically.
     </div>
   </div>
 

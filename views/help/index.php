@@ -62,12 +62,12 @@
             ['PO File', "Upload the customer's Purchase Order once received. Can be left blank at creation and added later via Edit.", 'PO-SUNRISE-8821.pdf'],
             ['Other Documents', 'Optional. Attach any other supporting files - select multiple at once. Each one can be removed individually from the Edit screen afterwards.', 'site_survey.pdf, signed_agreement.pdf'],
             ['Quotation No', 'The exact quotation number shown on the document. Must be unique in the system.', 'QT-2026-0142'],
-            ['Customer Name', 'The company or individual named on the quotation.', 'Sunrise Trading Sdn Bhd'],
+            ['Customer Name', "The company or individual named on the quotation. Start typing to see matching existing customers, or type a brand-new name - it's added to the Customers master list automatically when you save.", 'Sunrise Trading Sdn Bhd'],
             ['Subject', 'A short description of what the quotation is for.', 'Supply of Office Furniture - HQ Level 3'],
             ['Total Cost (RM)', 'The total quotation amount. Numbers only, no commas.', '15800.00'],
             ['Job Start Date', 'The date work/order processing begins - usually the date the PO is received.', '20-08-2026'],
             ['Branch', 'Which branch this job order belongs to. Sales staff just see their own branch here; Admin/Manager get a dropdown that also narrows the Assign To list below to that branch\'s staff.', 'Penang Branch'],
-            ['Assign To', 'The staff member(s) responsible for progressing this job order - hold Ctrl/Cmd to pick more than one. Sales staff can only pick colleagues at their own branch, or staff with no branch.', 'Andy Yoon, Sarah Lim'],
+            ['Assign To', 'The staff member(s) responsible for progressing this job order - tick a checkbox for each person. Sales staff can only pick colleagues at their own branch, or staff with no branch.', 'Andy Yoon, Sarah Lim'],
             ['Job Stage', 'Current stage of the job (see reference below). Update this as the job progresses.', '1 - Purchase Order Received'],
             ['Remarks', 'Optional notes - special instructions, delivery constraints, etc.', 'Customer requires delivery before 15 Sept.'],
         ];
@@ -160,8 +160,9 @@
     printed; it saves immediately. The listing is grouped by partner, opens scrolled to the current month, and keeps
     Customer/Start Date/Coverage/Email/Actions fixed on the left while the month columns scroll. Use
     <strong>Export CSV</strong> / <strong>Import</strong> at the top to back up or bulk-load contracts and their
-    checked months. Customer and Partner names come from the <strong>Customers</strong> and
-    <strong>LPR Partners</strong> maintenance lists - add a new one there if it's not in the dropdown yet. Each
+    checked months. The <strong>Customer</strong> field is a text box with autocomplete - start typing to see
+    matching existing customers, or type a brand-new name and it's added to the <strong>Customers</strong> master
+    list automatically when you save. Each
     contract belongs to one <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at
     their own branch, and new contracts are locked to it automatically. The Create/Edit form also has optional
     fields not shown on the listing or the CSV template below: <strong>Quotation No</strong>,
@@ -189,8 +190,9 @@ Weilong,Eastern Oriental Hotel,2026-03-01,36,contact@eoh.com,1,0,...</pre>
     <strong>SCH</strong> (scheduled) or <strong>DONE</strong> from the dropdown; it saves immediately. The listing
     opens scrolled to the current month and keeps Customer/Start Date/Coverage/Email/Actions fixed on the left
     while the month columns scroll. Use <strong>Export CSV</strong> / <strong>Import</strong> at the top to back up
-    or bulk-load contracts and their monthly statuses. Customer names come from the <strong>Customers</strong>
-    maintenance list - add a new one there if it's not in the dropdown yet. Each contract belongs to one
+    or bulk-load contracts and their monthly statuses. The <strong>Customer</strong> field is a text box with
+    autocomplete - start typing to see matching existing customers, or type a brand-new name and it's added to the
+    <strong>Customers</strong> master list automatically when you save. Each contract belongs to one
     <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at their own branch, and new
     contracts are locked to it automatically. The Create/Edit form also has optional fields not shown on the
     listing or the CSV template below: <strong>Assign To</strong> (one person responsible for servicing the
@@ -214,11 +216,13 @@ Badan Pengurusan Bersama Wellesly Residences,2026-08-02,24,contact@wellesly.com,
 <div class="card" style="margin-top:20px;">
   <h3 style="margin-top:0;">Customers Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
-    Shared customer master list, referenced by the Customer dropdown on LPR Rental, SMC and other modules. Add,
-    edit, deactivate or delete individual customers from the <strong>Customers</strong> page, or bulk-manage the
-    whole list with <strong>Export CSV</strong> / <strong>Import</strong> at the top. <strong>Delete</strong> is
-    permanent and only works if the customer has no LPR rentals or SMC contracts (even old/removed ones still
-    count) - use <strong>Deactivate</strong> instead to just hide it from dropdowns while keeping its history.
+    Shared customer master list, kept in sync automatically by the Customer field on Job Orders, LPR Rental and
+    SMC - typing a name that doesn't exist yet on any of those three adds it here the moment you save. Add, edit,
+    deactivate or delete individual customers from the <strong>Customers</strong> page, or bulk-manage the whole
+    list with <strong>Export CSV</strong> / <strong>Import</strong> at the top. <strong>Delete</strong> is
+    permanent and only works if the customer has no job orders, LPR rentals or SMC contracts (even old/removed
+    ones still count) - use <strong>Deactivate</strong> instead to just hide it from autocomplete while keeping
+    its history.
   </p>
   <p style="font-size:13px; font-weight:600; margin-bottom:6px;">Import/Export CSV template</p>
   <pre style="background: var(--color-bg); border:1px solid var(--color-border); border-radius:6px; padding:10px 12px; font-size:12.5px; overflow-x:auto;">Customer Name,Active

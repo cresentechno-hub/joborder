@@ -19,7 +19,11 @@ final class LprRental
     public static function findById(int $id): ?array
     {
         $pdo = Database::getInstance();
-        $stmt = $pdo->prepare('SELECT * FROM lpr_rentals WHERE id = :id AND is_deleted = 0 LIMIT 1');
+        $stmt = $pdo->prepare(
+            'SELECT lr.*, c.name AS customer_name FROM lpr_rentals lr
+             JOIN customers c ON c.id = lr.customer_id
+             WHERE lr.id = :id AND lr.is_deleted = 0 LIMIT 1'
+        );
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
         return $row ?: null;

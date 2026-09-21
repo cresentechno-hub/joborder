@@ -115,4 +115,17 @@ final class Customer
         $stmt->execute(['id' => $id]);
         return (int) $stmt->fetchColumn();
     }
+
+    /**
+     * Whether any job order still references this customer — job_orders has
+     * no customer_id FK (its Customer Name field is plain text, matched by
+     * name rather than linked), so this is a name match rather than a join.
+     */
+    public static function jobOrderCount(string $name): int
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM job_orders WHERE customer_name = :name AND is_deleted = 0');
+        $stmt->execute(['name' => $name]);
+        return (int) $stmt->fetchColumn();
+    }
 }

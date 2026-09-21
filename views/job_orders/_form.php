@@ -84,9 +84,14 @@ $isEdit = $mode === 'edit';
     </div>
     <div class="form-group">
       <label class="form-label" for="customer_name">Customer Name</label>
-      <input class="form-control" type="text" id="customer_name" name="customer_name"
+      <input class="form-control" type="text" id="customer_name" name="customer_name" list="customer-options"
              value="<?= old('customer_name', e($jobOrder['customer_name'] ?? '')) ?>"
              placeholder="e.g. Sunrise Trading Sdn Bhd" required>
+      <datalist id="customer-options">
+        <?php foreach ($customers as $c): ?>
+          <option value="<?= e($c['name']) ?>">
+        <?php endforeach; ?>
+      </datalist>
     </div>
   </div>
 

@@ -127,8 +127,9 @@ final class CustomerController extends Controller
 
         $rentals = Customer::lprRentalCount($id);
         $contracts = Customer::smcContractCount($id);
-        if ($rentals > 0 || $contracts > 0) {
-            flash('error', "Cannot delete \"{$customer['name']}\" — still referenced by {$rentals} LPR rental(s) and {$contracts} SMC contract(s). Deactivate it instead.");
+        $jobOrders = Customer::jobOrderCount($customer['name']);
+        if ($rentals > 0 || $contracts > 0 || $jobOrders > 0) {
+            flash('error', "Cannot delete \"{$customer['name']}\" — still referenced by {$jobOrders} job order(s), {$rentals} LPR rental(s), and {$contracts} SMC contract(s). Deactivate it instead.");
             $this->redirect('/customers');
         }
 

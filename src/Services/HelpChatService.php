@@ -51,12 +51,12 @@ final class HelpChatService
         - PO File: the customer's Purchase Order, once received. Can be added later via Edit.
         - Other Documents: optional, multiple files allowed, each removable individually later.
         - Quotation No: must be unique in the system.
-        - Customer Name: the company/person on the quotation.
+        - Customer Name: the company/person on the quotation. Text box with autocomplete — type to see matching existing customers, or type a new name and it's added to the Customers master list automatically on save.
         - Subject: short description of what's being quoted.
         - Total Cost (RM): numbers only, no commas.
         - Job Start Date: usually the date the PO is received.
         - Branch: which branch the job order belongs to. Sales staff only see their own branch (locked); Admin/Manager get a dropdown, which also narrows the Assign To list to that branch's staff.
-        - Assign To: staff responsible for the job order, multiple allowed. Sales staff can only pick colleagues at their own branch or staff with no branch.
+        - Assign To: staff responsible for the job order — tick a checkbox for each person, multiple allowed. Sales staff can only pick colleagues at their own branch or staff with no branch.
         - Job Stage: current stage (see Job Stage Reference below) — update as the job progresses.
         - Remarks: optional notes.
 
@@ -102,8 +102,11 @@ final class HelpChatService
         opens scrolled to the current month, and keeps Customer/Start
         Date/Coverage/Email/Actions fixed while month columns scroll.
         Export CSV / Import at the top backs up or bulk-loads contracts.
-        Customer and Partner names come from the Customers and LPR
-        Partners maintenance lists. Each contract belongs to one Branch
+        The Customer field is a text box with autocomplete — type to see
+        matching existing customers, or type a new name and it's added to
+        the Customers master list automatically on save (Partner still
+        comes from the LPR Partners maintenance list). Each contract
+        belongs to one Branch
         (visible to Admin only) — Sales staff only see their own branch's
         contracts, locked automatically on new ones. Import/export CSV
         columns: Partner, Customer, Start Date (YYYY-MM-DD), Coverage
@@ -123,7 +126,10 @@ final class HelpChatService
         status from its dropdown; it saves immediately. Same layout
         pattern as LPR Rental (opens at current month, fixed left columns,
         Export/Import, Branch visible to Admin only, Sales locked to own
-        branch). Import/export CSV columns: Customer, Start Date
+        branch). The Customer field is a text box with autocomplete — type
+        to see matching existing customers, or type a new name and it's
+        added to the Customers master list automatically on save.
+        Import/export CSV columns: Customer, Start Date
         (YYYY-MM-DD), Coverage Months (12/24/36/48), Customer Email, then
         one column per covered month (header YYYY-MM) with Blank/SCH/DONE.
         A row is matched to an existing contract by Customer + Start Date;
@@ -137,8 +143,9 @@ final class HelpChatService
         Blank/SCH/DONE), Description, and a Contract File attachment.
 
         === Customers module ===
-        Shared customer master list referenced by the Customer dropdown
-        on LPR Rental, SMC and other modules. Add/edit/deactivate/delete
+        Shared customer master list, kept in sync automatically — typing a
+        name on Job Orders, LPR Rental or SMC that doesn't exist yet adds
+        it here the moment that record is saved. Add/edit/deactivate/delete
         individually from the Customers page, or use Export CSV / Import
         at the top to bulk-manage the whole list. Import/export CSV
         columns: Customer Name, Active (1/0 or Yes/No, blank = active). A
@@ -146,9 +153,9 @@ final class HelpChatService
         names are added as new customers, matched names have their Active
         status updated. Safe to re-import the exported file; it never
         creates duplicates. Delete is permanent and only works if the
-        customer has no LPR rentals or SMC contracts (even old/removed
-        ones still count) — Deactivate instead just hides it from
-        dropdowns while keeping its history.
+        customer has no job orders, LPR rentals or SMC contracts (even
+        old/removed ones still count) — Deactivate instead just hides it
+        from autocomplete while keeping its history.
 
         === LPR Partners module ===
         Partner maintenance list used by the LPR Rental module's Partner

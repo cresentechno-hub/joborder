@@ -84,7 +84,7 @@ final class SmcController extends Controller
         }
 
         $id = SmcContract::create([
-            'customer_id'       => (int) $input['customer_id'],
+            'customer_id'       => Customer::findOrCreateByName(trim($input['customer_name'])),
             'branch_id'         => $branchId,
             'start_date'        => $input['start_date'],
             'coverage_months'   => (int) $input['coverage_months'],
@@ -167,7 +167,7 @@ final class SmcController extends Controller
         }
 
         SmcContract::update($id, [
-            'customer_id'       => (int) $input['customer_id'],
+            'customer_id'       => Customer::findOrCreateByName(trim($input['customer_name'])),
             'branch_id'         => $branchId,
             'start_date'        => $input['start_date'],
             'coverage_months'   => (int) $input['coverage_months'],
@@ -492,8 +492,8 @@ final class SmcController extends Controller
     {
         $errors = [];
 
-        if (empty($input['customer_id']) || !Customer::findById((int) $input['customer_id'])) {
-            $errors['customer_id'] = 'Please select a valid customer.';
+        if (trim((string) ($input['customer_name'] ?? '')) === '') {
+            $errors['customer_name'] = 'Customer is required.';
         }
 
         if (empty($input['start_date']) || !DateTime::createFromFormat('Y-m-d', (string) $input['start_date'])) {

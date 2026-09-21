@@ -23,7 +23,11 @@ final class SmcContract
     public static function findById(int $id): ?array
     {
         $pdo = Database::getInstance();
-        $stmt = $pdo->prepare('SELECT * FROM smc_contracts WHERE id = :id AND is_deleted = 0 LIMIT 1');
+        $stmt = $pdo->prepare(
+            'SELECT sc.*, c.name AS customer_name FROM smc_contracts sc
+             JOIN customers c ON c.id = sc.customer_id
+             WHERE sc.id = :id AND sc.is_deleted = 0 LIMIT 1'
+        );
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
         return $row ?: null;
