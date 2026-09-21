@@ -186,10 +186,10 @@ final class JobOrder
         $pdo = Database::getInstance();
 
         if ($excludeId !== null) {
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM job_orders WHERE quotation_no = :no AND id != :id');
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM job_orders WHERE quotation_no = :no AND is_deleted = 0 AND id != :id');
             $stmt->execute(['no' => $quotationNo, 'id' => $excludeId]);
         } else {
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM job_orders WHERE quotation_no = :no');
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM job_orders WHERE quotation_no = :no AND is_deleted = 0');
             $stmt->execute(['no' => $quotationNo]);
         }
 

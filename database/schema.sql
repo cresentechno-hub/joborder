@@ -119,6 +119,10 @@ CREATE TABLE `job_orders` (
 
   -- captured from quotation upload
   `quotation_no`                  VARCHAR(50)   NOT NULL,
+  -- mirrors quotation_no, but NULL once is_deleted — lets the unique key
+  -- below enforce "no two ACTIVE job orders share a quotation_no" while
+  -- still letting a new job order reuse a deleted one's quotation_no.
+  `quotation_no_active`           VARCHAR(50)   GENERATED ALWAYS AS (IF(`is_deleted` = 0, `quotation_no`, NULL)) VIRTUAL,
   `customer_name`                 VARCHAR(150)  NOT NULL,
   `subject`                       VARCHAR(255)  NOT NULL,
   `total_cost`                    DECIMAL(15,2) NOT NULL DEFAULT 0.00,
@@ -145,7 +149,7 @@ CREATE TABLE `job_orders` (
   `created_at`                    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`                    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  UNIQUE KEY `uq_job_orders_quotation_no` (`quotation_no`),
+  UNIQUE KEY `uq_job_orders_quotation_no_active` (`quotation_no_active`),
   KEY `idx_job_orders_customer` (`customer_name`),
   KEY `idx_job_orders_stage` (`stage_id`),
   KEY `idx_job_orders_assigned` (`assigned_to`),
