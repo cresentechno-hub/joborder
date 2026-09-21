@@ -143,14 +143,15 @@ $isEdit = $mode === 'edit';
 
   <div class="form-row">
     <div class="form-group">
-      <label class="form-label" for="assigned_to">Assign To (hold Ctrl/Cmd to select multiple)</label>
-      <select class="form-control" id="assigned_to" name="assigned_to[]" multiple size="6" required>
+      <label class="form-label">Assign To</label>
+      <div id="assigned_to" style="max-height:170px; overflow-y:auto; border:1px solid var(--color-border); border-radius:6px; padding:8px;">
         <?php foreach ($users as $u): ?>
-          <option value="<?= (int) $u['id'] ?>" data-branch-id="<?= e((string) ($u['branch_id'] ?? '')) ?>" <?= in_array((string) $u['id'], $selectedUsers, true) ? 'selected' : '' ?>>
+          <label data-branch-id="<?= e((string) ($u['branch_id'] ?? '')) ?>" style="display:flex; align-items:center; gap:8px; padding:4px 0; font-weight:normal; cursor:pointer;">
+            <input type="checkbox" name="assigned_to[]" value="<?= (int) $u['id'] ?>" <?= in_array((string) $u['id'], $selectedUsers, true) ? 'checked' : '' ?> style="width:16px; height:16px;">
             <?= e($u['full_name']) ?>
-          </option>
+          </label>
         <?php endforeach; ?>
-      </select>
+      </div>
       <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
         Select one or more people responsible for this job order.
       </div>
@@ -281,21 +282,24 @@ $isEdit = $mode === 'edit';
   });
 
   // Branch dropdown (Admin/Manager) narrows the Assign To list. Assign To
-  // is a multi-select, so narrowing must not blindly clear every pick —
-  // it only hides non-matching options, and deselects any option that
-  // becomes hidden (a hidden-but-still-selected option would silently
-  // submit a person outside the branch Branch now says this is scoped to).
+  // is a checkbox group, so narrowing must not blindly clear every pick —
+  // it only hides non-matching rows, and unchecks any checkbox that
+  // becomes hidden (a hidden-but-still-checked box would silently submit a
+  // person outside the branch Branch now says this is scoped to).
   var branchSelect = document.getElementById('branch_id');
-  var assignSelect = document.getElementById('assigned_to');
-  if (branchSelect && assignSelect) {
+  var assignContainer = document.getElementById('assigned_to');
+  if (branchSelect && assignContainer) {
     var applyBranchFilter = function () {
       var selectedBranch = branchSelect.value;
-      Array.prototype.forEach.call(assignSelect.options, function (opt) {
-        if (!opt.value) { return; }
-        var branchId = opt.getAttribute('data-branch-id') || '';
+      Array.prototype.forEach.call(assignContainer.querySelectorAll('label[data-branch-id]'), function (row) {
+        var branchId = row.getAttribute('data-branch-id') || '';
         var shouldHide = selectedBranch !== '' && branchId !== '' && branchId !== selectedBranch;
-        opt.hidden = shouldHide;
-        if (shouldHide) { opt.selected = false; }
+        // row has an inline display:flex (see markup above), which beats the
+        // UA [hidden]{display:none} rule on specificity — toggle style.display
+        // directly rather than the hidden property, or hiding would silently
+        // no-op visually while still submitting the row's checkbox value.
+        row.style.display = shouldHide ? 'none' : 'flex';
+        if (shouldHide) { row.querySelector('input[type="checkbox"]').checked = false; }
       });
     };
     // Deliberately NOT run on page load: an existing job order's assignees
