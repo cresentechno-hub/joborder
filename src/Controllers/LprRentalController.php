@@ -25,11 +25,16 @@ final class LprRentalController extends Controller
     public function index(array $params = []): void
     {
         $customerId = (int) $this->input('customer_id', 0) ?: null;
-        $branchId = Auth::can('data.view_all_branches')
-            ? ((int) $this->input('branch_id', 0) ?: null)
-            : (int) (Auth::user()['branch_id'] ?? 0);
+        $canSelectBranch = Auth::can('data.view_all_branches');
+        // Unrestricted users pick ONE branch at a time from the filter
+        // dropdown (or none = "All Branches"); a restricted user's query is
+        // always scoped to the full set of branches they belong to.
+        $selectedBranchId = $canSelectBranch ? ((int) $this->input('branch_id', 0) ?: null) : null;
+        $branchIds = $canSelectBranch
+            ? ($selectedBranchId !== null ? [$selectedBranchId] : null)
+            : (Auth::user()['branch_ids'] ?? []);
 
-        $rentals = LprRental::allWithDetails($customerId, $branchId);
+        $rentals = LprRental::allWithDetails($customerId, $branchIds);
         $months = LprRental::globalMonthColumns();
         $checks = LprRental::checksByRental(array_map(static fn (array $r): int => (int) $r['id'], $rentals));
 
@@ -53,11 +58,11 @@ final class LprRentalController extends Controller
             'checks'             => $checks,
             'currentYm'          => date('Y-m'),
             'canManage'          => Auth::can('lpr_rental.manage'),
-            'canSelectBranch'    => Auth::can('data.view_all_branches'),
+            'canSelectBranch'    => $canSelectBranch,
             'customers'          => Customer::allActive(),
             'branches'           => Branch::allActive(),
             'selectedCustomerId' => $customerId,
-            'selectedBranchId'   => $branchId,
+            'selectedBranchId'   => $selectedBranchId,
         ]);
     }
 
@@ -230,7 +235,7 @@ final class LprRentalController extends Controller
         if (!$rental) {
             $this->json(['error' => 'Rental not found.'], 404);
         }
-        if (!Auth::can('data.view_all_branches') && (int) $rental['branch_id'] !== (int) (Auth::user()['branch_id'] ?? 0)) {
+        if (!Auth::can('data.view_all_branches') && !in_array((int) $rental['branch_id'], Auth::user()['branch_ids'] ?? [], true)) {
             $this->json(['error' => 'Rental not found.'], 404);
         }
 
@@ -433,8 +438,11 @@ final class LprRentalController extends Controller
 
     private function formContext(): array
     {
-        $myBranchId = Auth::user()['branch_id'] ?? null;
-        $myBranch = $myBranchId !== null ? Branch::findById((int) $myBranchId) : null;
+        $myBranchIds = Auth::user()['branch_ids'] ?? [];
+        $myBranches = array_values(array_filter(array_map(
+            static fn (int $id): ?array => Branch::findById($id),
+            $myBranchIds
+        )));
 
         return [
             'customers'       => Customer::allActive(),
@@ -442,34 +450,39 @@ final class LprRentalController extends Controller
             'coverageOptions' => self::COVERAGE_OPTIONS,
             'canSelectBranch' => Auth::can('data.view_all_branches'),
             'branches'        => Auth::can('data.view_all_branches') ? Branch::allActive() : [],
-            'myBranchId'      => $myBranchId,
-            'myBranchName'    => $myBranch['name'] ?? null,
+            'myBranchIds'     => $myBranchIds,
+            'myBranches'      => $myBranches,
         ];
     }
 
     /**
      * The branch_id a contract should be saved with: whatever a
      * branch-unrestricted user (data.view_all_branches) picked in the
-     * dropdown, or — for a restricted user — their own branch, ignoring
-     * anything posted. Returns null if there's no valid branch to use.
+     * dropdown, or — for a restricted user — their own branch if they only
+     * have one, or their own pick among their own branches if they have
+     * several. Returns null if there's no valid branch to use.
      */
     private function resolveBranchId(array $input): ?int
     {
         if (!Auth::can('data.view_all_branches')) {
-            $myBranchId = Auth::user()['branch_id'] ?? null;
-            return $myBranchId !== null ? (int) $myBranchId : null;
+            $myBranchIds = Auth::user()['branch_ids'] ?? [];
+            if (count($myBranchIds) === 1) {
+                return $myBranchIds[0];
+            }
+            $posted = (int) ($input['branch_id'] ?? 0);
+            return $posted > 0 && in_array($posted, $myBranchIds, true) ? $posted : null;
         }
 
         $posted = (int) ($input['branch_id'] ?? 0);
         return $posted > 0 && Branch::findById($posted) ? $posted : null;
     }
 
-    /** Branch to use for an imported row: the importer's own branch, or the first active branch if they have none (e.g. Admin). */
+    /** Branch to use for an imported row: the first of the importer's own branches, or the first active branch if they have none (e.g. Admin). */
     private function importBranchId(): ?int
     {
-        $myBranchId = Auth::user()['branch_id'] ?? null;
-        if ($myBranchId !== null) {
-            return (int) $myBranchId;
+        $myBranchIds = Auth::user()['branch_ids'] ?? [];
+        if (!empty($myBranchIds)) {
+            return $myBranchIds[0];
         }
         $first = Branch::allActive()[0] ?? null;
         return $first ? (int) $first['id'] : null;

@@ -36,9 +36,9 @@ final class JobOrderController extends Controller
             'dir'           => trim((string) $this->input('dir', '')) ?: null,
         ];
         if (!Auth::can('data.view_all_branches')) {
-            // 0 (never a real branch id) when the user has no branch yet —
+            // [] (never any real branch id) when the user has no branch yet —
             // restricted with nothing to show, never "unrestricted" by accident.
-            $filters['branch_id'] = (int) (Auth::user()['branch_id'] ?? 0);
+            $filters['branch_id'] = Auth::user()['branch_ids'] ?? [];
         }
         if (!$canViewCompleted) {
             $filters['hide_completed'] = true;
@@ -236,16 +236,21 @@ final class JobOrderController extends Controller
     /**
      * The branch_id a job order should be saved with: whatever a
      * branch-unrestricted user (data.view_all_branches) picked in the
-     * dropdown, or — for a restricted user — their own branch, ignoring
-     * anything posted (never trust the client for this). Returns null if
-     * there's no valid branch to use (invalid pick, or a restricted user
-     * with no branch of their own).
+     * dropdown, or — for a restricted user — their own branch if they only
+     * have one (ignoring anything posted, never trust the client for
+     * this), or their own pick among their own branches if they have
+     * several. Returns null if there's no valid branch to use (invalid
+     * pick, or a restricted user with no branch of their own).
      */
     private function resolveBranchId(array $input): ?int
     {
         if (!Auth::can('data.view_all_branches')) {
-            $myBranchId = Auth::user()['branch_id'] ?? null;
-            return $myBranchId !== null ? (int) $myBranchId : null;
+            $myBranchIds = Auth::user()['branch_ids'] ?? [];
+            if (count($myBranchIds) === 1) {
+                return $myBranchIds[0];
+            }
+            $posted = (int) ($input['branch_id'] ?? 0);
+            return $posted > 0 && in_array($posted, $myBranchIds, true) ? $posted : null;
         }
 
         $posted = (int) ($input['branch_id'] ?? 0);
@@ -254,34 +259,39 @@ final class JobOrderController extends Controller
 
     /**
      * Shared by create() and edit(): the "Assign To" list a user is allowed
-     * to pick from, plus the UI variant (fixed branch label vs. a real
-     * Branch dropdown). A branch-restricted user (no data.view_all_branches)
-     * can assign to colleagues at their own branch or anyone with no branch
-     * at all (Admin, Manager, other company staff), but never someone at a
-     * DIFFERENT branch — enforced again server-side in
+     * to pick from, plus the UI variant (fixed branch label vs. a Branch
+     * dropdown over every branch vs. a Branch dropdown limited to just the
+     * user's own branches). A branch-restricted user (no
+     * data.view_all_branches) can assign to colleagues sharing one of
+     * their branches or anyone with no branch at all (Admin, Manager,
+     * other company staff), but never someone whose branches are entirely
+     * disjoint from theirs — enforced again server-side in
      * assertOwnBranchAssignment(), this alone is just what's offered in the
      * UI. A branchless Sales user (edge case) only sees unaffiliated users,
-     * having no "own branch" of their own to also include.
+     * having no branch of their own to also include.
      */
     private function branchContext(): array
     {
         $canSelectBranch = Auth::can('data.view_all_branches');
-        $myBranchId = Auth::user()['branch_id'] ?? null;
+        $myBranchIds = Auth::user()['branch_ids'] ?? [];
 
         // Degrades to "unaffiliated users only" when the current user has
         // no branch of their own.
         $users = $canSelectBranch
             ? User::allActive()
-            : User::allActiveOwnBranchOrUnaffiliated($myBranchId);
+            : User::allActiveOwnBranchOrUnaffiliated($myBranchIds);
 
-        $myBranch = $myBranchId !== null ? Branch::findById((int) $myBranchId) : null;
+        $myBranches = array_values(array_filter(array_map(
+            static fn (int $id): ?array => Branch::findById($id),
+            $myBranchIds
+        )));
 
         return [
             'users'           => $users,
             'branches'        => $canSelectBranch ? Branch::allActive() : [],
             'canSelectBranch' => $canSelectBranch,
-            'myBranchId'      => $myBranchId,
-            'myBranchName'    => $myBranch['name'] ?? null,
+            'myBranchIds'     => $myBranchIds,
+            'myBranches'      => $myBranches,
             'customers'       => Customer::allActive(),
         ];
     }

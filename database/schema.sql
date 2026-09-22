@@ -78,7 +78,6 @@ CREATE TABLE `users` (
   `password_hash` VARCHAR(255) NOT NULL,
   `full_name`     VARCHAR(150) NOT NULL,
   `role_id`       INT UNSIGNED NOT NULL,
-  `branch_id`     INT UNSIGNED NULL COMMENT 'NULL = unaffiliated (fine for Admin/Manager)',
   `is_active`     TINYINT(1)   NOT NULL DEFAULT 1,
   `failed_login_attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `locked_until`  DATETIME     NULL COMMENT 'brute-force lockout expiry',
@@ -88,11 +87,20 @@ CREATE TABLE `users` (
   UNIQUE KEY `uq_users_username` (`username`),
   UNIQUE KEY `uq_users_email` (`email`),
   KEY `idx_users_role` (`role_id`),
-  KEY `idx_users_branch` (`branch_id`),
   CONSTRAINT `fk_users_role`
-    FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_users_branch`
-    FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE SET NULL
+    FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- A user can belong to more than one branch — see user_branches below
+-- (branch_id used to be a single nullable column on users; no rows here
+-- for a user means unaffiliated, same meaning NULL used to carry).
+DROP TABLE IF EXISTS `user_branches`;
+CREATE TABLE `user_branches` (
+  `user_id`   BIGINT UNSIGNED NOT NULL,
+  `branch_id` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`user_id`, `branch_id`),
+  CONSTRAINT `fk_user_branches_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_branches_branch` FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------

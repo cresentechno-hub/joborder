@@ -29,24 +29,49 @@ final class LprRental
         return $row ?: null;
     }
 
+    /**
+     * Builds a ` AND {$column} IN (:prefix0, :prefix1, ...)` fragment + its
+     * named params for a branch_id filter. $branchIds === null means
+     * unrestricted (no filter at all); an empty array means a restricted
+     * user with no branch of their own, so the fragment guarantees zero
+     * rows rather than silently matching everything. Named (not `?`)
+     * placeholders so this can be merged into a query that already binds
+     * other named params — PDO can't mix the two styles in one statement.
+     */
+    private static function branchIdsClause(?array $branchIds, string $column, string $prefix): array
+    {
+        if ($branchIds === null) {
+            return ['', []];
+        }
+        if (empty($branchIds)) {
+            return [' AND 1 = 0', []];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach (array_values($branchIds) as $i => $id) {
+            $key = "{$prefix}{$i}";
+            $placeholders[] = ":{$key}";
+            $params[$key] = $id;
+        }
+        return [' AND ' . $column . ' IN (' . implode(',', $placeholders) . ')', $params];
+    }
+
     /** All active rentals with customer/partner/branch names, grouped for display by partner name then customer name. */
-    public static function allWithDetails(?int $customerId = null, ?int $branchId = null): array
+    public static function allWithDetails(?int $customerId = null, ?array $branchIds = null): array
     {
         $pdo = Database::getInstance();
+        [$branchClause, $branchParams] = self::branchIdsClause($branchIds, 'lr.branch_id', 'b');
         $sql = 'SELECT lr.*, c.name AS customer_name, p.name AS partner_name, b.name AS branch_name
                 FROM lpr_rentals lr
                 JOIN customers c ON c.id = lr.customer_id
                 JOIN lpr_partners p ON p.id = lr.partner_id
                 JOIN branches b ON b.id = lr.branch_id
-                WHERE lr.is_deleted = 0';
-        $params = [];
+                WHERE lr.is_deleted = 0' . $branchClause;
+        $params = $branchParams;
         if ($customerId !== null) {
             $sql .= ' AND lr.customer_id = :customer_id';
             $params['customer_id'] = $customerId;
-        }
-        if ($branchId !== null) {
-            $sql .= ' AND lr.branch_id = :branch_id';
-            $params['branch_id'] = $branchId;
         }
         $sql .= ' ORDER BY p.name, c.name, lr.start_date';
 
@@ -61,10 +86,10 @@ final class LprRental
      * renewal reminder. end_date is the last day of the covered period:
      * start_date + coverage_months, minus one day. Soonest/most overdue first.
      */
-    public static function expiringSoon(int $months = 3, ?int $branchId = null): array
+    public static function expiringSoon(int $months = 3, ?array $branchIds = null): array
     {
         $pdo = Database::getInstance();
-        $branchFilter = $branchId !== null ? ' AND lr.branch_id = :branch_id' : '';
+        [$branchFilter, $branchParams] = self::branchIdsClause($branchIds, 'lr.branch_id', 'b');
         $stmt = $pdo->prepare(
             'SELECT lr.*, c.name AS customer_name, p.name AS partner_name,
                     DATE_SUB(DATE_ADD(lr.start_date, INTERVAL lr.coverage_months MONTH), INTERVAL 1 DAY) AS end_date
@@ -75,10 +100,7 @@ final class LprRental
              HAVING end_date <= DATE_ADD(CURDATE(), INTERVAL :months MONTH)
              ORDER BY end_date ASC'
         );
-        $params = ['months' => $months];
-        if ($branchId !== null) {
-            $params['branch_id'] = $branchId;
-        }
+        $params = ['months' => $months] + $branchParams;
         $stmt->execute($params);
         return $stmt->fetchAll();
     }

@@ -18,14 +18,14 @@ final class DashboardController extends Controller
         $renewalMonths = max(1, (int) setting('renewal_reminder_months', '3'));
 
         // null = unrestricted (sees every branch). A restricted user with no
-        // branch yet gets 0 (never a real branch id) — sees nothing — never
-        // confused with "unrestricted".
-        $branchId = Auth::can('data.view_all_branches') ? null : (int) (Auth::user()['branch_id'] ?? 0);
+        // branch yet gets [] (never any real branch id) — sees nothing —
+        // never confused with "unrestricted".
+        $branchIds = Auth::can('data.view_all_branches') ? null : (Auth::user()['branch_ids'] ?? []);
         $hideCompleted = !Auth::can('job_order.view_completed');
 
         $renewals = [];
         if (Auth::can('lpr_rental.view')) {
-            foreach (LprRental::expiringSoon($renewalMonths, $branchId) as $r) {
+            foreach (LprRental::expiringSoon($renewalMonths, $branchIds) as $r) {
                 $renewals[] = [
                     'module'   => 'LPR',
                     'url'      => "/lpr-rentals/{$r['id']}/edit",
@@ -36,7 +36,7 @@ final class DashboardController extends Controller
             }
         }
         if (Auth::can('smc.view')) {
-            foreach (SmcContract::expiringSoon($renewalMonths, $branchId) as $c) {
+            foreach (SmcContract::expiringSoon($renewalMonths, $branchIds) as $c) {
                 $renewals[] = [
                     'module'   => 'SMC',
                     'url'      => "/smc/{$c['id']}/edit",
@@ -50,9 +50,9 @@ final class DashboardController extends Controller
 
         $this->view('dashboard/index', [
             'user'               => Auth::user(),
-            'quotationsThisYear' => JobOrder::countThisYear($branchId),
-            'stageCounts'        => JobOrder::countByStage($branchId, $hideCompleted),
-            'stuckJobs'          => JobOrder::stuckJobs($alertDays, $branchId),
+            'quotationsThisYear' => JobOrder::countThisYear($branchIds),
+            'stageCounts'        => JobOrder::countByStage($branchIds, $hideCompleted),
+            'stuckJobs'          => JobOrder::stuckJobs($alertDays, $branchIds),
             'alertDays'          => $alertDays,
             'renewals'           => $renewals,
             'renewalMonths'      => $renewalMonths,

@@ -57,13 +57,13 @@ $lprIdsToMark = [];
 $smcIdsToMark = [];
 
 foreach ($recipients as $user) {
-    $branchId = in_array('data.view_all_branches', $user['permissions'], true)
+    $branchIds = in_array('data.view_all_branches', $user['permissions'], true)
         ? null
-        : (int) ($user['branch_id'] ?? 0);
+        : ($user['branch_ids'] ?? []);
 
     $lprItems = [];
     if (in_array('lpr', $user['modules'], true)) {
-        foreach (LprRental::expiringSoon($months, $branchId) as $r) {
+        foreach (LprRental::expiringSoon($months, $branchIds) as $r) {
             if ($r['renewal_reminder_sent_at'] !== null) {
                 continue;
             }
@@ -79,7 +79,7 @@ foreach ($recipients as $user) {
 
     $smcItems = [];
     if (in_array('smc', $user['modules'], true)) {
-        foreach (SmcContract::expiringSoon($months, $branchId) as $c) {
+        foreach (SmcContract::expiringSoon($months, $branchIds) as $c) {
             if ($c['renewal_reminder_sent_at'] !== null) {
                 continue;
             }

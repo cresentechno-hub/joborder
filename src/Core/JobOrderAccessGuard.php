@@ -28,19 +28,20 @@ trait JobOrderAccessGuard
             return;
         }
 
-        $myBranchId = Auth::user()['branch_id'] ?? null;
+        $myBranchIds = Auth::user()['branch_ids'] ?? [];
 
-        if ($myBranchId === null || (int) $jobOrder['branch_id'] !== (int) $myBranchId) {
+        if (!in_array((int) $jobOrder['branch_id'], $myBranchIds, true)) {
             $this->notFound();
         }
     }
 
     /**
      * Hard server-side enforcement of the assignment rule: a branch-
-     * restricted user can assign a job order to a colleague at their own
-     * branch, or to anyone with no branch, but never to someone at a
-     * DIFFERENT branch. Checks a single candidate; call once per selected
-     * assignee. Returns an error message, or null if the assignment is fine.
+     * restricted user can assign a job order to a colleague sharing at
+     * least one of their branches, or to anyone with no branch, but never
+     * to someone whose branches are entirely disjoint from theirs. Checks
+     * a single candidate; call once per selected assignee. Returns an
+     * error message, or null if the assignment is fine.
      */
     private function assertOwnBranchAssignment(int $assignedTo): ?string
     {
@@ -48,15 +49,14 @@ trait JobOrderAccessGuard
             return null;
         }
 
-        $myBranchId = Auth::user()['branch_id'] ?? null;
-        $assignee = User::findById($assignedTo);
-        $assigneeBranchId = $assignee['branch_id'] ?? null;
+        $myBranchIds = Auth::user()['branch_ids'] ?? [];
+        $assigneeBranchIds = User::branchIds($assignedTo);
 
-        // Blocked only when the assignee has a branch of their own that
-        // differs from mine — unaffiliated (no branch) assignees are
+        // Blocked only when the assignee has branches of their own that
+        // share none with mine — unaffiliated (no branch) assignees are
         // always allowed.
-        if ($assigneeBranchId !== null && (int) $assigneeBranchId !== (int) $myBranchId) {
-            return 'You can only assign job orders to a colleague at your own branch, or to a user with no branch.';
+        if (!empty($assigneeBranchIds) && empty(array_intersect($myBranchIds, $assigneeBranchIds))) {
+            return 'You can only assign job orders to a colleague sharing one of your branches, or to a user with no branch.';
         }
 
         return null;

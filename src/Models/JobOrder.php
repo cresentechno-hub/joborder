@@ -257,8 +257,20 @@ final class JobOrder
         }
 
         if (array_key_exists('branch_id', $filters)) {
-            $where[] = 'branch_id = :branch_id';
-            $params['branch_id'] = $filters['branch_id'];
+            // A restricted user's full branch set — [] (never any real id)
+            // must guarantee zero rows, not silently match everything.
+            $branchIds = (array) $filters['branch_id'];
+            if (empty($branchIds)) {
+                $where[] = '1 = 0';
+            } else {
+                $placeholders = [];
+                foreach (array_values($branchIds) as $i => $id) {
+                    $key = "branch{$i}";
+                    $placeholders[] = ":{$key}";
+                    $params[$key] = $id;
+                }
+                $where[] = 'branch_id IN (' . implode(',', $placeholders) . ')';
+            }
         }
 
         if (!empty($filters['hide_completed'])) {
@@ -296,21 +308,44 @@ final class JobOrder
     }
 
     /**
-     * Job orders created (captured into the system) this calendar year.
-     * $branchId scopes the count to that branch — pass 0 (never a real
-     * branch id) for a restricted user with no branch of their own, so
-     * they see nothing. null means unrestricted (every branch).
+     * Builds a ` AND {$column} IN (:prefix0, :prefix1, ...)` fragment + its
+     * named params for a branch_id filter. $branchIds === null means
+     * unrestricted (no filter at all); an empty array means a restricted
+     * user with no branch of their own, so the fragment guarantees zero
+     * rows rather than silently matching everything. Named (not `?`)
+     * placeholders so this can be merged into a query that already binds
+     * other named params — PDO can't mix the two styles in one statement.
      */
-    public static function countThisYear(?int $branchId = null): int
+    private static function branchIdsClause(?array $branchIds, string $column, string $prefix): array
+    {
+        if ($branchIds === null) {
+            return ['', []];
+        }
+        if (empty($branchIds)) {
+            return [' AND 1 = 0', []];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach (array_values($branchIds) as $i => $id) {
+            $key = "{$prefix}{$i}";
+            $placeholders[] = ":{$key}";
+            $params[$key] = $id;
+        }
+        return [' AND ' . $column . ' IN (' . implode(',', $placeholders) . ')', $params];
+    }
+
+    /**
+     * Job orders created (captured into the system) this calendar year.
+     * $branchIds scopes the count to those branches — pass [] for a
+     * restricted user with no branch of their own, so they see nothing.
+     * null means unrestricted (every branch).
+     */
+    public static function countThisYear(?array $branchIds = null): int
     {
         $pdo = Database::getInstance();
-        $sql = 'SELECT COUNT(*) FROM job_orders WHERE is_deleted = 0 AND YEAR(created_at) = YEAR(CURDATE())';
-        $params = [];
-
-        if ($branchId !== null) {
-            $sql .= ' AND branch_id = :branch_id';
-            $params['branch_id'] = $branchId;
-        }
+        [$clause, $params] = self::branchIdsClause($branchIds, 'branch_id', 'b');
+        $sql = 'SELECT COUNT(*) FROM job_orders WHERE is_deleted = 0 AND YEAR(created_at) = YEAR(CURDATE())' . $clause;
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -319,22 +354,16 @@ final class JobOrder
 
     /**
      * Every active stage with its live job count (0 for empty stages), in
-     * workflow order. $branchId scopes counts to that branch (0 = a
+     * workflow order. $branchIds scopes counts to those branches ([] = a
      * restricted user with no branch, sees nothing; null = unrestricted).
      * $hideCompleted drops stage 7/8 rows entirely — set true for any
      * viewer without job_order.view_completed, so the dashboard doesn't
      * leak completed/cancelled counts to roles that can't see the records.
      */
-    public static function countByStage(?int $branchId = null, bool $hideCompleted = false): array
+    public static function countByStage(?array $branchIds = null, bool $hideCompleted = false): array
     {
         $pdo = Database::getInstance();
-        $branchJoin = '';
-        $params = [];
-
-        if ($branchId !== null) {
-            $branchJoin = ' AND jo.branch_id = :branch_id';
-            $params['branch_id'] = $branchId;
-        }
+        [$branchJoin, $params] = self::branchIdsClause($branchIds, 'jo.branch_id', 'b');
 
         $stageFilter = $hideCompleted ? " AND js.stage_code NOT IN ('7', '8')" : '';
 
@@ -354,19 +383,15 @@ final class JobOrder
     /**
      * Job orders that have sat in their current stage longer than $days,
      * excluding the two terminal stages (7 Sales Completed, 8 Cancel PO) —
-     * those are finished, not "pending". $branchId scopes to that branch.
+     * those are finished, not "pending". $branchIds scopes to those branches.
      */
-    public static function stuckJobs(int $days, ?int $branchId = null): array
+    public static function stuckJobs(int $days, ?array $branchIds = null): array
     {
         $pdo = Database::getInstance();
+        [$branchClause, $branchParams] = self::branchIdsClause($branchIds, 'branch_id', 'b');
         $sql = "SELECT * FROM v_job_orders_overview
-                WHERE days_in_current_stage > :days AND stage_code NOT IN ('7', '8')";
-        $params = ['days' => $days];
-
-        if ($branchId !== null) {
-            $sql .= ' AND branch_id = :branch_id';
-            $params['branch_id'] = $branchId;
-        }
+                WHERE days_in_current_stage > :days AND stage_code NOT IN ('7', '8')" . $branchClause;
+        $params = ['days' => $days] + $branchParams;
 
         $sql .= ' ORDER BY days_in_current_stage DESC';
 

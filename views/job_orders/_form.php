@@ -129,7 +129,7 @@ $isEdit = $mode === 'edit';
       <?php if (!empty($canSelectBranch)): ?>
         <select class="form-control" id="branch_id" name="branch_id" required>
           <option value="">-- Select Branch --</option>
-          <?php $selectedBranch = old('branch_id', (string) ($jobOrder['branch_id'] ?? $myBranchId ?? '')); ?>
+          <?php $selectedBranch = old('branch_id', (string) ($jobOrder['branch_id'] ?? '')); ?>
           <?php foreach ($branches as $b): ?>
             <option value="<?= (int) $b['id'] ?>" <?= $selectedBranch === (string) $b['id'] ? 'selected' : '' ?>>
               <?= e($b['name']) ?>
@@ -139,9 +139,22 @@ $isEdit = $mode === 'edit';
         <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
           Which branch this job order belongs to. Changing this narrows Assign To below to that branch's staff.
         </div>
+      <?php elseif (count($myBranches ?? []) > 1): ?>
+        <select class="form-control" id="branch_id" name="branch_id" required>
+          <option value="">-- Select Branch --</option>
+          <?php $selectedBranch = old('branch_id', (string) ($jobOrder['branch_id'] ?? '')); ?>
+          <?php foreach ($myBranches as $b): ?>
+            <option value="<?= (int) $b['id'] ?>" <?= $selectedBranch === (string) $b['id'] ? 'selected' : '' ?>>
+              <?= e($b['name']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+        <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
+          Which of your branches this job order belongs to. Changing this narrows Assign To below to that branch's staff.
+        </div>
       <?php else: ?>
-        <input class="form-control" type="text" value="<?= e($myBranchName ?? 'No branch assigned') ?>" disabled>
-        <input type="hidden" name="branch_id" value="<?= (int) ($myBranchId ?? 0) ?>">
+        <input class="form-control" type="text" value="<?= e($myBranches[0]['name'] ?? 'No branch assigned') ?>" disabled>
+        <input type="hidden" name="branch_id" value="<?= (int) ($myBranches[0]['id'] ?? 0) ?>">
       <?php endif; ?>
     </div>
   </div>
@@ -151,7 +164,7 @@ $isEdit = $mode === 'edit';
       <label class="form-label">Assign To</label>
       <div id="assigned_to" style="max-height:170px; overflow-y:auto; border:1px solid var(--color-border); border-radius:6px; padding:8px;">
         <?php foreach ($users as $u): ?>
-          <label data-branch-id="<?= e((string) ($u['branch_id'] ?? '')) ?>" style="display:flex; align-items:center; gap:8px; padding:4px 0; font-weight:normal; cursor:pointer;">
+          <label data-branch-ids="<?= e(implode(',', $u['branch_ids'] ?? [])) ?>" style="display:flex; align-items:center; gap:8px; padding:4px 0; font-weight:normal; cursor:pointer;">
             <input type="checkbox" name="assigned_to[]" value="<?= (int) $u['id'] ?>" <?= in_array((string) $u['id'], $selectedUsers, true) ? 'checked' : '' ?> style="width:16px; height:16px;">
             <?= e($u['full_name']) ?>
           </label>
@@ -296,9 +309,9 @@ $isEdit = $mode === 'edit';
   if (branchSelect && assignContainer) {
     var applyBranchFilter = function () {
       var selectedBranch = branchSelect.value;
-      Array.prototype.forEach.call(assignContainer.querySelectorAll('label[data-branch-id]'), function (row) {
-        var branchId = row.getAttribute('data-branch-id') || '';
-        var shouldHide = selectedBranch !== '' && branchId !== '' && branchId !== selectedBranch;
+      Array.prototype.forEach.call(assignContainer.querySelectorAll('label[data-branch-ids]'), function (row) {
+        var branchIds = (row.getAttribute('data-branch-ids') || '').split(',').filter(Boolean);
+        var shouldHide = selectedBranch !== '' && branchIds.length > 0 && branchIds.indexOf(selectedBranch) === -1;
         // row has an inline display:flex (see markup above), which beats the
         // UA [hidden]{display:none} rule on specificity — toggle style.display
         // directly rather than the hidden property, or hiding would silently

@@ -18,9 +18,9 @@ trait BranchAccessGuard
             return;
         }
 
-        $myBranchId = Auth::user()['branch_id'] ?? null;
+        $myBranchIds = Auth::user()['branch_ids'] ?? [];
 
-        if ($myBranchId === null || (int) $record['branch_id'] !== (int) $myBranchId) {
+        if (!in_array((int) $record['branch_id'], $myBranchIds, true)) {
             $this->notFound();
         }
     }

@@ -73,11 +73,11 @@ final class Branch
         $stmt->execute(['active' => $active ? 1 : 0, 'id' => $id]);
     }
 
-    /** Member count, for the Branches list ("3 users") and to warn before deactivating. */
+    /** Member count, for the Branches list ("3 users") and to warn before deactivating. A user with more than one branch counts once here, not per branch they hold. */
     public static function memberCount(int $id): int
     {
         $pdo = Database::getInstance();
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE branch_id = :id');
+        $stmt = $pdo->prepare('SELECT COUNT(DISTINCT user_id) FROM user_branches WHERE branch_id = :id');
         $stmt->execute(['id' => $id]);
         return (int) $stmt->fetchColumn();
     }
@@ -85,10 +85,11 @@ final class Branch
     /**
      * Whether anything still references this branch — job orders, LPR
      * rentals, SMC contracts (all ON DELETE RESTRICT — the real backstop
-     * that delete() would hit anyway) or assigned users (ON DELETE SET
-     * NULL, so the DB wouldn't block it, but silently unassigning real
-     * staff from their branch as a side effect of a delete isn't
-     * acceptable — checked explicitly here instead).
+     * that delete() would hit anyway) or assigned users (user_branches is
+     * ON DELETE CASCADE, so the DB wouldn't block it — deleting a branch
+     * would just silently drop that one membership row per user — but
+     * doing that as a side effect of a delete isn't acceptable; checked
+     * explicitly here instead, same as before).
      */
     public static function isInUse(int $id): bool
     {

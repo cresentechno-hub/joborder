@@ -66,8 +66,8 @@
             ['Subject', 'A short description of what the quotation is for.', 'Supply of Office Furniture - HQ Level 3'],
             ['Total Cost (RM)', 'The total quotation amount. Numbers only, no commas.', '15800.00'],
             ['Job Start Date', 'The date work/order processing begins - usually the date the PO is received.', '20-08-2026'],
-            ['Branch', 'Which branch this job order belongs to. Sales staff just see their own branch here; Admin/Manager get a dropdown that also narrows the Assign To list below to that branch\'s staff.', 'Penang Branch'],
-            ['Assign To', 'The staff member(s) responsible for progressing this job order - tick a checkbox for each person. Sales staff can only pick colleagues at their own branch, or staff with no branch.', 'Andy Yoon, Sarah Lim'],
+            ['Branch', "Which branch this job order belongs to. A Sales user with only one branch just sees it fixed here; one with more than one branch picks among their own branches. Admin/Manager get a dropdown over every branch, which also narrows the Assign To list below to that branch's staff.", 'Penang Branch'],
+            ['Assign To', 'The staff member(s) responsible for progressing this job order - tick a checkbox for each person. Sales staff can only pick colleagues sharing one of their own branches, or staff with no branch.', 'Andy Yoon, Sarah Lim'],
             ['Job Stage', 'Current stage of the job (see reference below). Update this as the job progresses.', '1 - Purchase Order Received'],
             ['Remarks', 'Optional notes - special instructions, delivery constraints, etc.', 'Customer requires delivery before 15 Sept.'],
         ];
@@ -164,7 +164,8 @@
     matching existing customers, or type a brand-new name and it's added to the <strong>Customers</strong> master
     list automatically when you save. Each
     contract belongs to one <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at
-    their own branch, and new contracts are locked to it automatically. The Create/Edit form also has optional
+    their own branch(es). A Sales user assigned to just one branch has it locked in automatically; one assigned to
+    more than one branch picks which of their own branches a new contract belongs to. The Create/Edit form also has optional
     fields not shown on the listing or the CSV template below: <strong>Quotation No</strong>,
     <strong>Rental Amount</strong>, <strong>Detail</strong>, <strong>E-Invoice</strong>, and a
     <strong>Contract File</strong> attachment (upload the signed contract PDF/image directly on the contract).
@@ -193,8 +194,9 @@ Weilong,Eastern Oriental Hotel,2026-03-01,36,contact@eoh.com,1,0,...</pre>
     or bulk-load contracts and their monthly statuses. The <strong>Customer</strong> field is a text box with
     autocomplete - start typing to see matching existing customers, or type a brand-new name and it's added to the
     <strong>Customers</strong> master list automatically when you save. Each contract belongs to one
-    <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at their own branch, and new
-    contracts are locked to it automatically. The Create/Edit form also has optional fields not shown on the
+    <strong>Branch</strong> (visible to Admin only) - Sales staff only see contracts at their own branch(es). A
+    Sales user assigned to just one branch has it locked in automatically; one assigned to more than one branch
+    picks which of their own branches a new contract belongs to. The Create/Edit form also has optional fields not shown on the
     listing or the CSV template below: <strong>Assign To</strong> (one person responsible for servicing the
     contract), <strong>CC To</strong> (multiple people to keep in the loop), <strong>Quotation No</strong>,
     <strong>Short Name</strong>, <strong>Site</strong>, <strong>Service Frequency</strong>,
@@ -259,7 +261,8 @@ Whizcity,1</pre>
   <h3 style="margin-top:0;">Branches Module</h3>
   <p style="color: var(--color-text-muted); font-size:13px;">
     Branch maintenance list. Sales-role users only see job orders/LPR rentals/SMC contracts belonging to their own
-    branch; other roles see every branch. Add, edit, deactivate or delete individual branches from the
+    branch(es) - a user can be assigned to more than one branch under <a href="/users">Users</a>; other roles see
+    every branch. Add, edit, deactivate or delete individual branches from the
     <strong>Branches</strong> page, or bulk-manage the whole list with <strong>Export CSV</strong> /
     <strong>Import</strong> at the top. <strong>Delete</strong> is permanent and only works if the branch has no
     users, job orders, LPR rentals, or SMC contracts assigned to it - use <strong>Deactivate</strong> instead to

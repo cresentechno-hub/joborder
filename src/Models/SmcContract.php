@@ -33,24 +33,49 @@ final class SmcContract
         return $row ?: null;
     }
 
+    /**
+     * Builds a ` AND {$column} IN (:prefix0, :prefix1, ...)` fragment + its
+     * named params for a branch_id filter. $branchIds === null means
+     * unrestricted (no filter at all); an empty array means a restricted
+     * user with no branch of their own, so the fragment guarantees zero
+     * rows rather than silently matching everything. Named (not `?`)
+     * placeholders so this can be merged into a query that already binds
+     * other named params — PDO can't mix the two styles in one statement.
+     */
+    private static function branchIdsClause(?array $branchIds, string $column, string $prefix): array
+    {
+        if ($branchIds === null) {
+            return ['', []];
+        }
+        if (empty($branchIds)) {
+            return [' AND 1 = 0', []];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach (array_values($branchIds) as $i => $id) {
+            $key = "{$prefix}{$i}";
+            $placeholders[] = ":{$key}";
+            $params[$key] = $id;
+        }
+        return [' AND ' . $column . ' IN (' . implode(',', $placeholders) . ')', $params];
+    }
+
     /** All active contracts with customer/branch/assignee names, ordered for display by customer name then start date. */
-    public static function allWithDetails(?int $customerId = null, ?int $branchId = null): array
+    public static function allWithDetails(?int $customerId = null, ?array $branchIds = null): array
     {
         $pdo = Database::getInstance();
+        [$branchClause, $branchParams] = self::branchIdsClause($branchIds, 'sc.branch_id', 'b');
         $sql = 'SELECT sc.*, c.name AS customer_name, b.name AS branch_name, u.full_name AS assigned_to_name
                 FROM smc_contracts sc
                 JOIN customers c ON c.id = sc.customer_id
                 JOIN branches b ON b.id = sc.branch_id
                 LEFT JOIN users u ON u.id = sc.assigned_to
-                WHERE sc.is_deleted = 0';
-        $params = [];
+                WHERE sc.is_deleted = 0' . $branchClause;
+        $params = $branchParams;
         if ($customerId !== null) {
             $sql .= ' AND sc.customer_id = :customer_id';
             $params['customer_id'] = $customerId;
-        }
-        if ($branchId !== null) {
-            $sql .= ' AND sc.branch_id = :branch_id';
-            $params['branch_id'] = $branchId;
         }
         $sql .= ' ORDER BY c.name, sc.start_date';
 
@@ -65,10 +90,10 @@ final class SmcContract
      * renewal reminder. end_date is the last day of the covered period:
      * start_date + coverage_months, minus one day. Soonest/most overdue first.
      */
-    public static function expiringSoon(int $months = 3, ?int $branchId = null): array
+    public static function expiringSoon(int $months = 3, ?array $branchIds = null): array
     {
         $pdo = Database::getInstance();
-        $branchFilter = $branchId !== null ? ' AND sc.branch_id = :branch_id' : '';
+        [$branchFilter, $branchParams] = self::branchIdsClause($branchIds, 'sc.branch_id', 'b');
         $stmt = $pdo->prepare(
             'SELECT sc.*, c.name AS customer_name,
                     DATE_SUB(DATE_ADD(sc.start_date, INTERVAL sc.coverage_months MONTH), INTERVAL 1 DAY) AS end_date
@@ -78,10 +103,7 @@ final class SmcContract
              HAVING end_date <= DATE_ADD(CURDATE(), INTERVAL :months MONTH)
              ORDER BY end_date ASC'
         );
-        $params = ['months' => $months];
-        if ($branchId !== null) {
-            $params['branch_id'] = $branchId;
-        }
+        $params = ['months' => $months] + $branchParams;
         $stmt->execute($params);
         return $stmt->fetchAll();
     }

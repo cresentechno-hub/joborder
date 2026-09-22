@@ -55,10 +55,10 @@ final class UserController extends Controller
             'email'         => trim($input['email']),
             'full_name'     => trim($input['full_name']),
             'role_id'       => (int) $input['role_id'],
-            'branch_id'     => $this->branchIdFromInput($input),
             'password_hash' => password_hash((string) $input['password'], PASSWORD_BCRYPT),
             'is_active'     => 1,
         ]);
+        User::replaceBranches($newId, $this->branchIdsFromInput($input));
 
         ActivityLog::record(Auth::id(), 'user.create', 'user', $newId);
         flash('success', 'User created successfully.');
@@ -73,9 +73,10 @@ final class UserController extends Controller
         }
 
         $this->view('users/edit', [
-            'targetUser' => $user,
-            'roles'      => Role::all(),
-            'branches'   => Branch::allActive(),
+            'targetUser'       => $user,
+            'roles'            => Role::all(),
+            'branches'         => Branch::allActive(),
+            'selectedBranches' => User::branchIds((int) $user['id']),
         ]);
     }
 
@@ -119,8 +120,8 @@ final class UserController extends Controller
             'full_name' => trim($input['full_name']),
             'email'     => trim($input['email']),
             'role_id'   => (int) $input['role_id'],
-            'branch_id' => $this->branchIdFromInput($input),
         ]);
+        User::replaceBranches($id, $this->branchIdsFromInput($input));
 
         if ($newPassword !== '') {
             User::updatePassword($id, password_hash($newPassword, PASSWORD_BCRYPT));
@@ -238,19 +239,21 @@ final class UserController extends Controller
             $errors['role_id'] = 'Please select a valid role.';
         }
 
-        $branchId = $this->branchIdFromInput($input);
-        if ($branchId !== null && !Branch::findById($branchId)) {
-            $errors['branch_id'] = 'Please select a valid branch.';
+        foreach ($this->branchIdsFromInput($input) as $branchId) {
+            if (!Branch::findById($branchId)) {
+                $errors['branch_id'] = 'One of the selected branches is not valid.';
+                break;
+            }
         }
 
         return $errors;
     }
 
-    /** A single branch ID from `branch_id`, or null for an unaffiliated user. */
-    private function branchIdFromInput(array $input): ?int
+    /** @return int[] deduped, cast-to-int branch IDs from `branch_id[]` — empty for an unaffiliated user. */
+    private function branchIdsFromInput(array $input): array
     {
-        $raw = trim((string) ($input['branch_id'] ?? ''));
-        return $raw !== '' ? (int) $raw : null;
+        $raw = (array) ($input['branch_id'] ?? []);
+        return array_values(array_unique(array_filter(array_map('intval', $raw))));
     }
 
     private function notFound(): never

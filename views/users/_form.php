@@ -2,7 +2,8 @@
 
 /**
  * Shared create/edit form. Expects: $mode ('create'|'edit'), $roles,
- * $branches, and $targetUser (array, edit only).
+ * $branches, $targetUser (array, edit only), and $selectedBranches
+ * (int[], edit only).
  */
 
 $errors = form_errors();
@@ -63,19 +64,23 @@ $isEdit = $mode === 'edit';
   </div>
 
   <div class="form-group">
-    <label class="form-label" for="branch_id">Branch (optional)</label>
-    <select class="form-control" id="branch_id" name="branch_id">
-      <option value="">-- No Branch --</option>
-      <?php $selectedBranch = old('branch_id', (string) ($targetUser['branch_id'] ?? '')); ?>
+    <label class="form-label">Branches (optional)</label>
+    <?php
+      $oldBranches = old_array('branch_id');
+      $selectedBranches = $oldBranches ?: array_map('strval', $selectedBranches ?? []);
+    ?>
+    <div id="branch_id" style="max-height:170px; overflow-y:auto; border:1px solid var(--color-border); border-radius:6px; padding:8px;">
       <?php foreach ($branches as $b): ?>
-        <option value="<?= (int) $b['id'] ?>" <?= $selectedBranch === (string) $b['id'] ? 'selected' : '' ?>>
+        <label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-weight:normal; cursor:pointer;">
+          <input type="checkbox" name="branch_id[]" value="<?= (int) $b['id'] ?>" <?= in_array((string) $b['id'], $selectedBranches, true) ? 'checked' : '' ?> style="width:16px; height:16px;">
           <?= e($b['name']) ?>
-        </option>
+        </label>
       <?php endforeach; ?>
-    </select>
+    </div>
     <div style="margin-top:4px; font-size:12px; color: var(--color-text-muted);">
       Only affects Sales-role users: they only see job orders/LPR rentals/SMC contracts belonging to their own
-      branch. Manage branches under <a href="/branches">Branches</a>.
+      branches. Leave every box unchecked for an unaffiliated user (fine for Admin/Manager). A user can belong to
+      more than one branch. Manage branches under <a href="/branches">Branches</a>.
     </div>
   </div>
 

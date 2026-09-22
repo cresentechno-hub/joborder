@@ -55,8 +55,8 @@ final class HelpChatService
         - Subject: short description of what's being quoted.
         - Total Cost (RM): numbers only, no commas.
         - Job Start Date: usually the date the PO is received.
-        - Branch: which branch the job order belongs to. Sales staff only see their own branch (locked); Admin/Manager get a dropdown, which also narrows the Assign To list to that branch's staff.
-        - Assign To: staff responsible for the job order — tick a checkbox for each person, multiple allowed. Sales staff can only pick colleagues at their own branch or staff with no branch.
+        - Branch: which branch the job order belongs to. A Sales user with only one branch has it locked in; one with more than one branch picks among their own branches. Admin/Manager get a dropdown over every branch, which also narrows the Assign To list to that branch's staff.
+        - Assign To: staff responsible for the job order — tick a checkbox for each person, multiple allowed. Sales staff can only pick colleagues sharing one of their own branches, or staff with no branch.
         - Job Stage: current stage (see Job Stage Reference below) — update as the job progresses.
         - Remarks: optional notes.
 
@@ -106,9 +106,10 @@ final class HelpChatService
         matching existing customers, or type a new name and it's added to
         the Customers master list automatically on save (Partner still
         comes from the LPR Partners maintenance list). Each contract
-        belongs to one Branch
-        (visible to Admin only) — Sales staff only see their own branch's
-        contracts, locked automatically on new ones. Import/export CSV
+        belongs to one Branch (visible to Admin only) — Sales staff only
+        see contracts at their own branch(es); a Sales user with just one
+        branch has it locked in automatically, one with more than one
+        branch picks among their own branches. Import/export CSV
         columns: Partner, Customer, Start Date (YYYY-MM-DD), Coverage
         Months (12/24/36/48), Customer Email, then one column per covered
         month (header YYYY-MM) with 1/0 or Yes/No. A row is matched to an
@@ -125,8 +126,8 @@ final class HelpChatService
         Contract Start Date + Month Coverage (12/24/36/48). Set a month's
         status from its dropdown; it saves immediately. Same layout
         pattern as LPR Rental (opens at current month, fixed left columns,
-        Export/Import, Branch visible to Admin only, Sales locked to own
-        branch). The Customer field is a text box with autocomplete — type
+        Export/Import, Branch visible to Admin only, Sales scoped to their
+        own branch(es) the same way as LPR Rental). The Customer field is a text box with autocomplete — type
         to see matching existing customers, or type a new name and it's
         added to the Customers master list automatically on save.
         Import/export CSV columns: Customer, Start Date
@@ -168,7 +169,8 @@ final class HelpChatService
 
         === Branches module ===
         Branch maintenance list. Sales-role users only see job
-        orders/LPR rentals/SMC contracts at their own branch; other roles
+        orders/LPR rentals/SMC contracts at their own branch(es) — a user
+        can be assigned to more than one branch under Users; other roles
         see every branch. Add/edit/deactivate/delete individually from
         the Branches page, or use Export CSV / Import at the top. Same
         CSV format and matching rules as Customers above, but with a

@@ -2,8 +2,8 @@
 
 /**
  * Shared create/edit form. Expects: $mode ('create'|'edit'), $customers,
- * $users, $coverageOptions, $canSelectBranch, $branches, $myBranchId,
- * $myBranchName, $contract (array, edit only), and $selectedCc (int[],
+ * $users, $coverageOptions, $canSelectBranch, $branches, $myBranchIds,
+ * $myBranches, $contract (array, edit only), and $selectedCc (int[],
  * edit only).
  */
 
@@ -162,16 +162,26 @@ $isEdit = $mode === 'edit';
     <?php if ($canSelectBranch): ?>
       <select class="form-control" id="branch_id" name="branch_id" required>
         <option value="">-- Select Branch --</option>
-        <?php $selectedBranch = old('branch_id', (string) ($contract['branch_id'] ?? $myBranchId ?? '')); ?>
+        <?php $selectedBranch = old('branch_id', (string) ($contract['branch_id'] ?? '')); ?>
         <?php foreach ($branches as $b): ?>
           <option value="<?= (int) $b['id'] ?>" <?= $selectedBranch === (string) $b['id'] ? 'selected' : '' ?>>
             <?= e($b['name']) ?>
           </option>
         <?php endforeach; ?>
       </select>
+    <?php elseif (count($myBranches ?? []) > 1): ?>
+      <select class="form-control" id="branch_id" name="branch_id" required>
+        <option value="">-- Select Branch --</option>
+        <?php $selectedBranch = old('branch_id', (string) ($contract['branch_id'] ?? '')); ?>
+        <?php foreach ($myBranches as $b): ?>
+          <option value="<?= (int) $b['id'] ?>" <?= $selectedBranch === (string) $b['id'] ? 'selected' : '' ?>>
+            <?= e($b['name']) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
     <?php else: ?>
-      <input class="form-control" type="text" value="<?= e($myBranchName ?? 'No branch assigned') ?>" disabled>
-      <input type="hidden" name="branch_id" value="<?= (int) ($myBranchId ?? 0) ?>">
+      <input class="form-control" type="text" value="<?= e($myBranches[0]['name'] ?? 'No branch assigned') ?>" disabled>
+      <input type="hidden" name="branch_id" value="<?= (int) ($myBranches[0]['id'] ?? 0) ?>">
     <?php endif; ?>
   </div>
 

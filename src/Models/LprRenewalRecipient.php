@@ -21,13 +21,21 @@ final class LprRenewalRecipient
     public static function all(): array
     {
         $pdo = Database::getInstance();
-        return $pdo->query(
-            'SELECT u.id, u.full_name, u.email, u.branch_id
+        $users = $pdo->query(
+            'SELECT u.id, u.full_name, u.email
              FROM lpr_renewal_recipients lrr
              JOIN users u ON u.id = lrr.user_id
              WHERE u.is_active = 1
              ORDER BY u.full_name'
         )->fetchAll();
+
+        $branchIdsMap = User::branchIdsMap(array_map(static fn (array $u): int => (int) $u['id'], $users));
+        foreach ($users as &$user) {
+            $user['branch_ids'] = $branchIdsMap[(int) $user['id']] ?? [];
+        }
+        unset($user);
+
+        return $users;
     }
 
     /**
