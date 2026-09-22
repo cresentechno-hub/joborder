@@ -10,13 +10,15 @@ use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Role;
 use App\Models\User;
+use Throwable;
 
 final class UserController extends Controller
 {
     public function index(array $params = []): void
     {
         $this->view('users/index', [
-            'users' => User::allWithRole(),
+            'users'   => User::allWithRole(),
+            'isAdmin' => (Auth::user()['role_name'] ?? null) === 'Admin',
         ]);
     }
 
@@ -159,6 +161,52 @@ final class UserController extends Controller
         User::setActive($id, !$user['is_active']);
         ActivityLog::record(Auth::id(), $user['is_active'] ? 'user.deactivate' : 'user.activate', 'user', $id);
         flash('success', $user['is_active'] ? 'User deactivated.' : 'User activated.');
+        $this->redirect('/users');
+    }
+
+    /**
+     * Hard delete — restricted to Admin regardless of who else holds
+     * user.manage (a role could grant that permission without also
+     * granting the right to permanently remove accounts).
+     */
+    public function destroy(array $params): void
+    {
+        $id = (int) $params['id'];
+
+        if (!verify_csrf()) {
+            flash('error', 'Your session expired, please try again.');
+            $this->redirect('/users');
+        }
+
+        if ((Auth::user()['role_name'] ?? null) !== 'Admin') {
+            flash('error', 'Only an Admin can delete a user.');
+            $this->redirect('/users');
+        }
+
+        $user = User::findById($id);
+        if (!$user) {
+            $this->notFound();
+        }
+
+        if ($id === Auth::id()) {
+            flash('error', 'You cannot delete your own account.');
+            $this->redirect('/users');
+        }
+
+        if (User::isInUse($id)) {
+            flash('error', "Cannot delete \"{$user['full_name']}\" — they still have job orders, LPR rentals, SMC contracts, or comments on record. Deactivate them instead.");
+            $this->redirect('/users');
+        }
+
+        try {
+            User::delete($id);
+        } catch (Throwable $e) {
+            flash('error', "Cannot delete \"{$user['full_name']}\" — they're still referenced by other records. Deactivate them instead.");
+            $this->redirect('/users');
+        }
+
+        ActivityLog::record(Auth::id(), 'user.delete', 'user', $id);
+        flash('success', 'User deleted.');
         $this->redirect('/users');
     }
 

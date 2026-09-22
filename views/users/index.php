@@ -34,6 +34,14 @@
                 <?= (int) $u['is_active'] === 1 ? 'Deactivate' : 'Activate' ?>
               </button>
             </form>
+            <?php if ($isAdmin && (int) $u['id'] !== (int) \App\Core\Auth::id()): ?>
+              &nbsp;|&nbsp;
+              <form method="POST" action="/users/<?= (int) $u['id'] ?>/delete" style="display:inline;"
+                    onsubmit="return confirm('Delete this user? This cannot be undone.');">
+                <?= csrf_field() ?>
+                <button type="submit" style="background:none; border:none; padding:0; color: var(--color-danger); cursor:pointer; font-size:13px;">Delete</button>
+              </form>
+            <?php endif; ?>
           </td>
           <td><?= e($u['full_name']) ?></td>
           <td><?= e($u['username']) ?></td>

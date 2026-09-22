@@ -282,4 +282,45 @@ final class User
         );
         return (int) $stmt->fetchColumn();
     }
+
+    /**
+     * Friendly pre-check before delete — the common, expected-to-happen
+     * cases. FK RESTRICT constraints on job_orders/lpr_rentals/smc_contracts
+     * (created_by), job_order_assignees, and job_order_comments
+     * (created_by/assigned_to) are the real backstop for anything this
+     * doesn't catch, surfaced via delete()'s own try/catch.
+     */
+    public static function isInUse(int $id): bool
+    {
+        $pdo = Database::getInstance();
+
+        $checks = [
+            'SELECT COUNT(*) FROM job_orders WHERE created_by = :id AND is_deleted = 0',
+            'SELECT COUNT(*) FROM job_order_assignees ja JOIN job_orders jo ON jo.id = ja.job_order_id WHERE ja.user_id = :id AND jo.is_deleted = 0',
+            'SELECT COUNT(*) FROM lpr_rentals WHERE created_by = :id AND is_deleted = 0',
+            'SELECT COUNT(*) FROM smc_contracts WHERE created_by = :id AND is_deleted = 0',
+            'SELECT COUNT(*) FROM job_order_comments WHERE created_by = :id',
+        ];
+        foreach ($checks as $sql) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['id' => $id]);
+            if ((int) $stmt->fetchColumn() > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Hard delete — only safe when isInUse() is false. FK constraints on
+     * the tables it doesn't cover (see isInUse()) are the real backstop;
+     * callers should catch the resulting PDOException/Throwable.
+     */
+    public static function delete(int $id): void
+    {
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare('DELETE FROM users WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+    }
 }

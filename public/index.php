@@ -100,6 +100,9 @@ $router->post('/users/{id}', [UserController::class, 'update'], [
 $router->post('/users/{id}/toggle-active', [UserController::class, 'toggleActive'], [
     [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
 ]);
+$router->post('/users/{id}/delete', [UserController::class, 'destroy'], [
+    [AuthMiddleware::class, null], [PermissionMiddleware::class, 'user.manage'],
+]);
 
 // Branches
 $router->get('/branches', [BranchController::class, 'index'], [
